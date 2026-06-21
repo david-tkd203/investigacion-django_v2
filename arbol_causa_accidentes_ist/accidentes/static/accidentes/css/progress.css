@@ -118,7 +118,7 @@
 }
 .case-progress .cp-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}
 .case-progress .cp-title{font-weight:700;color:var(--ist)}
-.case-progress .cp-title .cp-code{font-weight:600;color:#7A3DBD}
+.case-progress .cp-title .cp-code{font-weight:600;color:#d97706}
 .case-progress .cp-meta{color:var(--muted);font-size:.95rem}
 .case-progress .cp-chip{display:inline-block;padding:2px 8px;border-radius:999px;background:#F5F1FB;color:var(--ist);border:1px solid #E6DDF5;text-decoration:none}
 .case-progress .cp-bar-outer{height:10px;background:var(--track);border-radius:999px;overflow:hidden}

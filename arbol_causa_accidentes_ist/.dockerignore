@@ -12,7 +12,9 @@
 **/Thumbs.db
 **/.AppleDouble
 mysql/
+mysql_data/
 letsencrypt
 certbot
 *.pem
 *.key
+db.sqlite3

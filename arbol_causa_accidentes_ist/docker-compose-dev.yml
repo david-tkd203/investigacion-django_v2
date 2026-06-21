@@ -1,12 +1,38 @@
-version: '3.8'
-
 services:
+  # ── Ollama (IA local) ─────────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        ollama serve &
+        sleep 3
+        echo ">>> Pulling qwen2.5:3b..."
+        ollama pull qwen2.5:3b
+        echo ">>> qwen2.5:3b listo"
+        wait
+    networks:
+      - ai_network
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  # ── Base de datos MySQL ───────────────────────────────────────────────────────
   bd-investigacion:
     image: mysql:8.0
     container_name: bd-investigacion
-    restart: no
+    restart: unless-stopped
     ports:
-      - "3306:3306"
+      - "3307:3306"
     env_file:
       - .env
     environment:
@@ -15,44 +41,51 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
-      - ./mysql:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
     networks:
       - db_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
+  # ── Aplicación Django ─────────────────────────────────────────────────────────
   investiga-app:
     container_name: investiga_app
     build: .
-    restart: no
+    restart: unless-stopped
     env_file:
       - .env
     depends_on:
-      - bd-investigacion
-    # ⬇️ Produce los estáticos en /usr/src/app/staticfiles (STATIC_ROOT)
+      bd-investigacion:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    environment:
+      AMBIENTE: "${AMBIENTE:-produccion}"
+      DB_WAIT_SECONDS: "${DB_WAIT_SECONDS:-45}"
+      IA_PROVIDER: "${IA_PROVIDER:-ollama}"
+      OLLAMA_BASE_URL: "http://ollama:11434/v1"
+      OLLAMA_DEFAULT_MODEL: "${OLLAMA_DEFAULT_MODEL:-qwen2.5:3b}"
+      GROQ_API_KEY: "${GROQ_API_KEY}"
+      GROQ_DEFAULT_MODEL: "${GROQ_DEFAULT_MODEL:-llama-3.1-8b-instant}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      SECRET_KEY: "${SECRET_KEY:-django-insecure-f5em2y_8!!w*b_%9bb_6eq&n3qv7^f0-t6jyf)j=i^1jf=qfpo}"
     volumes:
       - staticfiles:/usr/src/app/staticfiles
       - protected_media:/usr/src/app/protected_media
-      - ./arbol_causa_accidentes_ist/accidentes/setting/data/holdings.json:/usr/src/app/arbol_causa_accidentes_ist/accidentes/setting/data/data.json:ro
-      # (opcional en prod) evita montar el repo completo para no pisar la imagen:
-      # - .:/usr/src/app
-    environment:
-      DB_ENGINE: ${DB_ENGINE}
-      DB_NAME: ${DB_NAME}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASS: ${DB_PASS}
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
-      DEFAULT_MODEL: ${DEFAULT_MODEL}
-      FALLBACK_MODEL: ${FALLBACK_MODEL}
     networks:
       - db_network
       - web_network
+      - ai_network
 
+  # ── Proxy Nginx ───────────────────────────────────────────────────────────────
   nginx-proxy:
     image: nginx:latest
     container_name: nginx_proxy
-    restart: no
+    restart: unless-stopped
     ports:
       - "80:80"
     volumes:
@@ -64,12 +97,27 @@ services:
     networks:
       - web_network
 
+  # ── Cloudflare Tunnel (link público para testers) ──────────────────────────────
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel --url http://nginx_proxy:80
+    depends_on:
+      - nginx-proxy
+    networks:
+      - web_network
+
 networks:
   db_network:
     driver: bridge
   web_network:
     driver: bridge
+  ai_network:
+    driver: bridge
 
 volumes:
   staticfiles:
   protected_media:
+  ollama_data:
+  mysql_data:

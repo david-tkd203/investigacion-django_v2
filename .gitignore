@@ -1,1 +1,66 @@
-/arbol_causa_accidentes_ist/staticfiles
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.whl
+*.manifest
+*.spec
+.venv/
+venv/
+env/
+
+# ── Django ────────────────────────────────────────────────
+*.log
+*.pot
+*.pyc
+__pycache__/
+*.sqlite3
+staticfiles/
+protected_media/
+media/
+
+# ── Entorno / Secrets ─────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# ── Datos sensibles del proyecto ─────────────────────────
+*.txt
+!requirements*.txt
+!plantillauft.cls
+DATOS_DE_ACCESO.txt
+arbol_limpio.txt
+extensions.txt
+*dump*.sql
+
+# ── Docker ────────────────────────────────────────────────
+mysql/
+sonarqube_data/
+sonarqube_extensions/
+sonarqube_logs/
+sonar_db_data/
+
+# ── IDE / Editor ──────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── OpenCode / AI ─────────────────────────────────────────
+/atl/
+.atl/
+.engram/
+
+# ── Misc ──────────────────────────────────────────────────
+*.db
+*.rdb

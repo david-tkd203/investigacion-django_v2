@@ -1,7 +1,14 @@
 {% load adminpanel_extras %}
 <aside class="custom-sidebar d-flex flex-column" id="sidebar">
     <a href="{% url 'accidentes:home' %}" class="sidebar-brand">
-        <div class="sidebar-brand-icon"></div>
+        <div class="sidebar-brand-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a10 10 0 1 0 10 10"/>
+                <path d="M12 12 8 8"/>
+                <path d="M12 12 16 8"/>
+                <path d="M12 12v6"/>
+            </svg>
+        </div>
         <div>
         <div class="fw-semibold">Asistente de Investigación</div>
         <div style="font-size: 0.75rem; opacity: 0.8;">de Accidentes Laborales</div>

@@ -1,0 +1,863 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23d97706'/%3E%3Cpath d='M10 22V12l6 4 6-4v10' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <title>Inicio Rapido - Nueva Investigacion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding: 40px 20px;
+      background: #0c0c0e;
+      position: relative;
+      overflow-x: hidden;
+    }
+    #three-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: radial-gradient(ellipse at 30% 20%, rgba(217,119,6,0.05) 0%, transparent 50%),
+                  radial-gradient(ellipse at 70% 80%, rgba(234,88,12,0.03) 0%, transparent 50%);
+      z-index: 0;
+      pointer-events: none;
+    }
+    .wizard-container {
+      position: relative;
+      z-index: 1;
+      background: #18181b;
+      border-radius: 16px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 1px 3px rgba(217,119,6,0.1);
+      width: 100%;
+      max-width: 640px;
+      padding: 40px 36px 32px;
+      border: 1px solid #27272a;
+      animation: fadeSlideUp 0.6s ease-out;
+    }
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .header { text-align:center; margin-bottom:24px; }
+    .app-icon {
+      width: 48px; height: 48px; margin: 0 auto 12px;
+      background: linear-gradient(135deg, #d97706, #ea580c);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; box-shadow: 0 4px 16px rgba(217,119,6,0.3);
+    }
+    .app-title {
+      font-size: 20px; font-weight: 600; color: #fafafa;
+      letter-spacing: -0.3px;
+    }
+    .app-subtitle {
+      font-size: 13px; color: #a1a1aa; margin-top: 4px;
+    }
+
+    /* Progress */
+    .progress-bar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      position: relative;
+    }
+    .progress-bar::before {
+      content: '';
+      position: absolute;
+      top: 14px; left: 0; right: 0;
+      height: 2px;
+      background: #27272a;
+      z-index: 0;
+    }
+    .progress-step {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .progress-dot {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: #27272a;
+      border: 2px solid #3f3f46;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600; color: #71717a;
+      transition: all .3s ease;
+    }
+    .progress-step.active .progress-dot {
+      background: #d97706;
+      border-color: #d97706;
+      color: #fff;
+      box-shadow: 0 0 12px rgba(217,119,6,0.3);
+    }
+    .progress-step.completed .progress-dot {
+      background: #d97706;
+      border-color: #d97706;
+      color: #fff;
+    }
+    .progress-label {
+      font-size: 11px; color: #52525b;
+      text-align: center; white-space: nowrap;
+    }
+    .progress-step.active .progress-label { color: #d4d4d8; font-weight: 500; }
+    .progress-step.completed .progress-label { color: #a1a1aa; }
+
+    /* Steps */
+    .step { display: none; }
+    .step.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .step-title {
+      font-size: 16px; font-weight: 600; color: #fafafa;
+      margin-bottom: 4px;
+    }
+    .step-desc {
+      font-size: 13px; color: #71717a;
+      margin-bottom: 20px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .form-row.full { grid-template-columns: 1fr; }
+    .form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block; margin-bottom: 6px;
+      font-weight: 500; color: #d4d4d8; font-size: 13px;
+    }
+    .form-input, .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #3f3f46;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all .2s ease;
+      background: #27272a;
+      color: #fafafa;
+      font-family: inherit;
+    }
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: #d97706;
+      box-shadow: 0 0 0 3px rgba(217,119,6,.12);
+      background: #27272a;
+    }
+    .form-input::placeholder { color: #71717a; }
+    .form-select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2371717a' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+    }
+    .form-select option { background: #18181b; color: #fafafa; }
+    .form-input.error, .form-select.error {
+      border-color: #ef4444;
+    }
+    .field-error { color: #ef4444; font-size: 12px; margin-top: 4px; }
+    .error-summary {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.2);
+      color: #fca5a5;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 18px;
+      font-size: 13px;
+    }
+
+    /* Checkbox */
+    .checkbox-group { margin: 12px 0; }
+    .checkbox-label {
+      display: flex; align-items: flex-start; gap: 10px;
+      color: #d4d4d8; font-size: 13px; cursor: pointer;
+      line-height: 1.4;
+    }
+    .checkbox-label input[type="checkbox"] {
+      width: 18px; height: 18px; min-width: 18px; margin-top: 1px;
+      accent-color: #d97706;
+      cursor: pointer;
+    }
+
+    /* Navigation */
+    .nav-buttons {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #27272a;
+    }
+    .btn {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .25s ease;
+      font-family: inherit;
+    }
+    .btn-prev {
+      background: transparent;
+      color: #a1a1aa;
+      border: 1.5px solid #3f3f46;
+    }
+    .btn-prev:hover {
+      border-color: #d97706;
+      color: #fafafa;
+    }
+    .btn-next, .btn-submit {
+      background: linear-gradient(135deg, #d97706, #ea580c);
+      color: #fff;
+    }
+    .btn-next:hover, .btn-submit:hover {
+      box-shadow: 0 4px 20px rgba(217,119,6,0.3);
+      transform: translateY(-1px);
+    }
+    .btn-next:active, .btn-submit:active {
+      transform: translateY(0);
+    }
+    .btn:disabled {
+      opacity: .5; cursor: not-allowed; transform: none;
+    }
+    .btn-submit.loading {
+      position: relative; color: transparent;
+    }
+    .btn-submit.loading::after {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      width: 18px; height: 18px; margin: -9px 0 0 -9px;
+      border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid #fff;
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .btn-hidden { visibility: hidden; }
+
+    /* Policy accordion */
+    .policy-accordion { margin: 12px 0; }
+    .policy-item {
+      border: 1px solid #3f3f46;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      overflow: hidden;
+      background: #27272a;
+    }
+    .policy-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      background: none;
+      border: none;
+      color: #d4d4d8;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: left;
+      transition: background .15s ease;
+    }
+    .policy-header:hover { background: #3f3f46; }
+    .policy-num {
+      background: #d97706;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .policy-name { flex: 1; font-weight: 500; }
+    .policy-arrow { transition: transform .2s ease; font-size: 12px; color: #71717a; }
+    .policy-item.open .policy-arrow { transform: rotate(180deg); }
+    .policy-body {
+      display: none;
+      padding: 0 14px 14px;
+      font-size: 13px;
+      color: #a1a1aa;
+      line-height: 1.5;
+    }
+    .policy-item.open .policy-body { display: block; }
+
+    @media (max-width: 600px) {
+      .wizard-container { padding: 24px 16px 20px; }
+      .form-row { grid-template-columns: 1fr; }
+      .form-row.triple { grid-template-columns: 1fr; }
+      .progress-label { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="three-canvas"></canvas>
+
+  <div class="wizard-container">
+    <div class="header">
+      <div class="app-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a10 10 0 1 0 10 10"/>
+          <path d="M12 12 8 8"/>
+          <path d="M12 12 16 8"/>
+          <path d="M12 12v6"/>
+        </svg>
+      </div>
+      <h1 class="app-title">Nueva Investigacion</h1>
+      <p class="app-subtitle">Complete los datos para crear un caso rapidamente</p>
+      <p style="margin-top:12px;font-size:12px;color:#52525b;">
+        ¿Ya tienes cuenta?
+        <a href="{% url 'accounts:login' %}" style="color:#d97706;text-decoration:none;font-weight:500;">Inicia sesion</a>
+      </p>
+    </div>
+
+    {% for key, msg in errors.items %}
+      {% if key != '__all__' %}
+      <div class="field-error">{{ msg }}</div>
+      {% endif %}
+    {% endfor %}
+    {% if errors.general %}
+      <div class="error-summary">{{ errors.general }}</div>
+    {% endif %}
+
+    <form method="post" id="wizardForm" novalidate>
+      {% csrf_token %}
+
+      <!-- Progress -->
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-step active" data-step="0">
+          <div class="progress-dot">1</div>
+          <span class="progress-label">Prevencionista</span>
+        </div>
+        <div class="progress-step" data-step="1">
+          <div class="progress-dot">2</div>
+          <span class="progress-label">Trabajador</span>
+        </div>
+        <div class="progress-step" data-step="2">
+          <div class="progress-dot">3</div>
+          <span class="progress-label">Empresa</span>
+        </div>
+        <div class="progress-step" data-step="3">
+          <div class="progress-dot">4</div>
+          <span class="progress-label">Politicas</span>
+        </div>
+      </div>
+
+      <!-- Step 1: Prevencionista -->
+      <div class="step active" data-step="0">
+        <h2 class="step-title">Datos del Prevencionista</h2>
+        <p class="step-desc">Ingrese los datos del investigador a cargo del caso.</p>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="id_nombre_prevencionista">Nombre completo</label>
+            <input type="text" id="id_nombre_prevencionista" name="nombre_prevencionista"
+                   class="form-input{% if errors.nombre_prevencionista %} error{% endif %}"
+                   placeholder="Nombre y apellidos" required
+                   value="{{ data.nombre_prevencionista|default:'' }}">
+            {% if errors.nombre_prevencionista %}<div class="field-error">{{ errors.nombre_prevencionista }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_rut_prevencionista">RUT</label>
+            <input type="text" id="id_rut_prevencionista" name="rut_prevencionista"
+                   class="form-input{% if errors.rut_prevencionista %} error{% endif %}"
+                   placeholder="12.345.678-5" required
+                   pattern="^\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]$"
+                   inputmode="numeric" autocomplete="off"
+                   value="{{ data.rut_prevencionista|default:'' }}">
+            {% if errors.rut_prevencionista %}<div class="field-error">{{ errors.rut_prevencionista }}</div>{% endif %}
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="id_email_prevencionista">Email</label>
+            <input type="email" id="id_email_prevencionista" name="email_prevencionista"
+                   class="form-input{% if errors.email_prevencionista %} error{% endif %}"
+                   placeholder="correo@ejemplo.cl" required
+                   value="{{ data.email_prevencionista|default:'' }}">
+            {% if errors.email_prevencionista %}<div class="field-error">{{ errors.email_prevencionista }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_telefono_prevencionista">Telefono</label>
+            <input type="text" id="id_telefono_prevencionista" name="telefono_prevencionista"
+                   class="form-input" placeholder="+56 9 1234 5678"
+                   value="{{ data.telefono_prevencionista|default:'' }}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Trabajador -->
+      <div class="step" data-step="1">
+        <h2 class="step-title">Datos del Trabajador</h2>
+        <p class="step-desc">Ingrese los datos del trabajador accidentado.</p>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="id_nombre_trabajador">Nombre completo</label>
+            <input type="text" id="id_nombre_trabajador" name="nombre_trabajador"
+                   class="form-input{% if errors.nombre_trabajador %} error{% endif %}"
+                   placeholder="Nombre y apellidos" required
+                   value="{{ data.nombre_trabajador|default:'' }}">
+            {% if errors.nombre_trabajador %}<div class="field-error">{{ errors.nombre_trabajador }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_rut_trabajador">RUT trabajador</label>
+            <input type="text" id="id_rut_trabajador" name="rut_trabajador"
+                   class="form-input{% if errors.rut_trabajador %} error{% endif %}"
+                   placeholder="12.345.678-5" required
+                   pattern="^\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]$"
+                   inputmode="numeric" autocomplete="off"
+                   value="{{ data.rut_trabajador|default:'' }}">
+            {% if errors.rut_trabajador %}<div class="field-error">{{ errors.rut_trabajador }}</div>{% endif %}
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="id_fecha_nacimiento">Fecha de nacimiento</label>
+            <input type="date" id="id_fecha_nacimiento" name="fecha_nacimiento"
+                   class="form-input{% if errors.fecha_nacimiento %} error{% endif %}" required
+                   value="{{ data.fecha_nacimiento|default:'' }}">
+            {% if errors.fecha_nacimiento %}<div class="field-error">{{ errors.fecha_nacimiento }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_nacionalidad">Nacionalidad</label>
+            <select id="id_nacionalidad" name="nacionalidad" class="form-select">
+              <option value="">Seleccione...</option>
+              <option value="Chilena" {% if data.nacionalidad == 'Chilena' %}selected{% endif %}>Chilena</option>
+              <option value="Peruana" {% if data.nacionalidad == 'Peruana' %}selected{% endif %}>Peruana</option>
+              <option value="Venezolana" {% if data.nacionalidad == 'Venezolana' %}selected{% endif %}>Venezolana</option>
+              <option value="Boliviana" {% if data.nacionalidad == 'Boliviana' %}selected{% endif %}>Boliviana</option>
+              <option value="Argentina" {% if data.nacionalidad == 'Argentina' %}selected{% endif %}>Argentina</option>
+              <option value="Colombiana" {% if data.nacionalidad == 'Colombiana' %}selected{% endif %}>Colombiana</option>
+              <option value="Ecuatoriana" {% if data.nacionalidad == 'Ecuatoriana' %}selected{% endif %}>Ecuatoriana</option>
+              <option value="Haitiana" {% if data.nacionalidad == 'Haitiana' %}selected{% endif %}>Haitiana</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="id_estado_civil">Estado civil</label>
+            <select id="id_estado_civil" name="estado_civil" class="form-select">
+              <option value="">Seleccione...</option>
+              <option value="Soltero/a" {% if data.estado_civil == 'Soltero/a' %}selected{% endif %}>Soltero/a</option>
+              <option value="Casado/a" {% if data.estado_civil == 'Casado/a' %}selected{% endif %}>Casado/a</option>
+              <option value="Viudo/a" {% if data.estado_civil == 'Viudo/a' %}selected{% endif %}>Viudo/a</option>
+              <option value="Divorciado/a" {% if data.estado_civil == 'Divorciado/a' %}selected{% endif %}>Divorciado/a</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_domicilio">Direccion / Domicilio</label>
+            <input type="text" id="id_domicilio" name="domicilio"
+                   class="form-input" placeholder="Calle, numero, comuna"
+                   value="{{ data.domicilio|default:'' }}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="id_cargo">Cargo</label>
+            <input type="text" id="id_cargo" name="cargo"
+                   class="form-input" placeholder="Ej: Operador de maquinaria"
+                   value="{{ data.cargo|default:'' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_tipo_contrato">Tipo contrato</label>
+            <select id="id_tipo_contrato" name="tipo_contrato" class="form-select">
+              <option value="">Seleccione...</option>
+              <option value="Indefinido" {% if data.tipo_contrato == 'Indefinido' %}selected{% endif %}>Indefinido</option>
+              <option value="Plazo Fijo" {% if data.tipo_contrato == 'Plazo Fijo' %}selected{% endif %}>Plazo Fijo</option>
+              <option value="Honorarios" {% if data.tipo_contrato == 'Honorarios' %}selected{% endif %}>Honorarios</option>
+              <option value="Contratista" {% if data.tipo_contrato == 'Contratista' %}selected{% endif %}>Contratista</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Empresa y Centro -->
+      <div class="step" data-step="2">
+        <h2 class="step-title">Datos de la Empresa</h2>
+        <p class="step-desc">Ingrese los datos de la empresa y centro de trabajo.</p>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="id_nombre_empresa">Nombre empresa</label>
+            <input type="text" id="id_nombre_empresa" name="nombre_empresa"
+                   class="form-input{% if errors.nombre_empresa %} error{% endif %}"
+                   placeholder="Razon social" required
+                   value="{{ data.nombre_empresa|default:'' }}">
+            {% if errors.nombre_empresa %}<div class="field-error">{{ errors.nombre_empresa }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_rut_empresa">RUT empresa</label>
+            <input type="text" id="id_rut_empresa" name="rut_empresa"
+                   class="form-input{% if errors.rut_empresa %} error{% endif %}"
+                   placeholder="76.123.456-7" required
+                   pattern="^\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]$"
+                   inputmode="numeric" autocomplete="off"
+                   value="{{ data.rut_empresa|default:'' }}">
+            {% if errors.rut_empresa %}<div class="field-error">{{ errors.rut_empresa }}</div>{% endif %}
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="id_actividad_empresa">Actividad</label>
+            <input type="text" id="id_actividad_empresa" name="actividad_empresa"
+                   class="form-input" placeholder="Giro o actividad economica"
+                   value="{{ data.actividad_empresa|default:'' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_direccion_empresa">Direccion empresa</label>
+            <input type="text" id="id_direccion_empresa" name="direccion_empresa"
+                   class="form-input" placeholder="Calle, numero"
+                   value="{{ data.direccion_empresa|default:'' }}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="id_region_empresa">Region</label>
+            <input type="text" id="id_region_empresa" name="region_empresa"
+                   class="form-input" placeholder="Ej: Metropolitana"
+                   value="{{ data.region_empresa|default:'' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_comuna_empresa">Comuna</label>
+            <input type="text" id="id_comuna_empresa" name="comuna_empresa"
+                   class="form-input" placeholder="Ej: Santiago"
+                   value="{{ data.comuna_empresa|default:'' }}">
+          </div>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #27272a; margin: 20px 0;">
+
+        <h3 style="font-size: 14px; font-weight: 600; color: #fafafa; margin-bottom: 16px;">Centro de Trabajo</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="id_centro_nombre">Nombre del local</label>
+            <input type="text" id="id_centro_nombre" name="centro_nombre"
+                   class="form-input{% if errors.centro_nombre %} error{% endif %}"
+                   placeholder="Ej: Planta Norte" required
+                   value="{{ data.centro_nombre|default:'' }}">
+            {% if errors.centro_nombre %}<div class="field-error">{{ errors.centro_nombre }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_centro_direccion">Direccion del centro</label>
+            <input type="text" id="id_centro_direccion" name="centro_direccion"
+                   class="form-input" placeholder="Calle, numero"
+                   value="{{ data.centro_direccion|default:'' }}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="id_centro_region">Region</label>
+            <input type="text" id="id_centro_region" name="centro_region"
+                   class="form-input" placeholder="Ej: Metropolitana"
+                   value="{{ data.centro_region|default:'' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="id_centro_comuna">Comuna</label>
+            <input type="text" id="id_centro_comuna" name="centro_comuna"
+                   class="form-input" placeholder="Ej: Santiago"
+                   value="{{ data.centro_comuna|default:'' }}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Politicas -->
+      <div class="step" data-step="3">
+        <h2 class="step-title">Politicas y Confirmacion</h2>
+        <p class="step-desc">Revise y acepte las politicas de privacidad para continuar.</p>
+
+        <!-- Accordion de politicas -->
+        <div class="policy-accordion">
+          <div class="policy-item">
+            <button class="policy-header" type="button" onclick="togglePolicy(this)">
+              <span class="policy-num">Ley 21.459</span>
+              <span class="policy-name">Delitos Informaticos</span>
+              <span class="policy-arrow">▾</span>
+            </button>
+            <div class="policy-body">
+              <p><strong>Objeto:</strong> Prevenir, detectar y responder a conductas sancionadas por la Ley de Delitos Informaticos.</p>
+              <ul style="margin:8px 0;padding-left:18px;color:#a1a1aa;font-size:13px;line-height:1.6;">
+                <li>Acceso autorizado con credenciales unicas y trazabilidad por usuario.</li>
+                <li>Prevencion de sabotaje y fraude con controles de integridad y segregacion de roles.</li>
+                <li>Resguardo de evidencias con trazabilidad por caso y cadena de custodia.</li>
+                <li>Prohibida la divulgacion no autorizada de informacion.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="policy-item">
+            <button class="policy-header" type="button" onclick="togglePolicy(this)">
+              <span class="policy-num">Ley 21.663</span>
+              <span class="policy-name">Ley Marco de Ciberseguridad</span>
+              <span class="policy-arrow">▾</span>
+            </button>
+            <div class="policy-body">
+              <p><strong>Objeto:</strong> Establecer principios y obligaciones de ciberseguridad para la proteccion de la informacion.</p>
+              <ul style="margin:8px 0;padding-left:18px;color:#a1a1aa;font-size:13px;line-height:1.6;">
+                <li>Implementacion de medidas tecnicas y organizativas para la seguridad de la informacion.</li>
+                <li>Notificacion de incidentes de seguridad conforme a la normativa vigente.</li>
+                <li>Gestion de riesgos y evaluaciones periodicas de seguridad.</li>
+                <li>Capacitacion y concientizacion en materia de ciberseguridad.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="policy-item">
+            <button class="policy-header" type="button" onclick="togglePolicy(this)">
+              <span class="policy-num">Ley 21.719</span>
+              <span class="policy-name">Proteccion de Datos Personales</span>
+              <span class="policy-arrow">▾</span>
+            </button>
+            <div class="policy-body">
+              <p><strong>Objeto:</strong> Regular el tratamiento de datos personales y garantizar los derechos de los titulares.</p>
+              <ul style="margin:8px 0;padding-left:18px;color:#a1a1aa;font-size:13px;line-height:1.6;">
+                <li>Los datos proporcionados seran utilizados exclusivamente para la investigacion de accidentes.</li>
+                <li>Se garantiza el derecho de acceso, rectificacion, cancelacion y oposicion.</li>
+                <li>Los datos no seran compartidos con terceros sin consentimiento explicito.</li>
+                <li>Periodo de conservacion limitado al tiempo necesario para la investigacion.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="checkbox-group" style="margin-top:16px;">
+          <label class="checkbox-label">
+            <input type="checkbox" name="acepto_politicas" id="id_acepto_politicas" required
+                   {% if data.acepto_politicas %}checked{% endif %}>
+            <span>He leido y acepto las politicas de privacidad y tratamiento de datos personales conforme a las Leyes 21.719, 21.663 y 21.459.</span>
+          </label>
+        </div>
+        {% if errors.acepto_politicas %}<div class="field-error">{{ errors.acepto_politicas }}</div>{% endif %}
+
+        <div class="checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" name="confirmo_datos" id="id_confirmo_datos" required
+                   {% if data.confirmo_datos %}checked{% endif %}>
+            <span>Confirmo que los datos ingresados son correctos y corresponden al caso que se desea investigar.</span>
+          </label>
+        </div>
+        {% if errors.confirmo_datos %}<div class="field-error">{{ errors.confirmo_datos }}</div>{% endif %}
+      </div>
+
+      <!-- Navigation -->
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-prev" id="prevBtn" onclick="prevStep()" style="visibility:hidden;">Anterior</button>
+        <button type="button" class="btn btn-next" id="nextBtn" onclick="nextStep()">Siguiente</button>
+        <button type="submit" class="btn btn-submit" id="submitBtn" style="display:none;">Crear caso</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    (function() {
+      var canvas = document.getElementById('three-canvas');
+      if (!canvas) return;
+
+      function initThree() {
+        if (typeof THREE === 'undefined') {
+          var s = document.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+          s.onload = startScene;
+          document.head.appendChild(s);
+        } else {
+          startScene();
+        }
+      }
+
+      function startScene() {
+        if (typeof THREE === 'undefined') return;
+        try {
+          var scene = new THREE.Scene();
+          var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+          var renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+          var count = 180;
+          var positions = new Float32Array(count * 3);
+          for (var i = 0; i < count * 3; i++) {
+            positions[i] = (Math.random() - 0.5) * 20;
+          }
+          var geometry = new THREE.BufferGeometry();
+          geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+          var material = new THREE.PointsMaterial({
+            size: 0.06, color: 0xd97706, transparent: true, opacity: 0.5,
+          });
+          var particles = new THREE.Points(geometry, material);
+          scene.add(particles);
+
+          var lineMaterial = new THREE.LineBasicMaterial({
+            color: 0xd97706, transparent: true, opacity: 0.08,
+          });
+
+          var lines = [];
+          var pos = geometry.attributes.position.array;
+          for (var i = 0; i < count; i++) {
+            for (var j = i + 1; j < count; j++) {
+              var dx = pos[i*3] - pos[j*3], dy = pos[i*3+1] - pos[j*3+1], dz = pos[i*3+2] - pos[j*3+2];
+              if (Math.sqrt(dx*dx + dy*dy + dz*dz) < 3.5) {
+                var lineGeo = new THREE.BufferGeometry();
+                lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+                  pos[i*3], pos[i*3+1], pos[i*3+2],
+                  pos[j*3], pos[j*3+1], pos[j*3+2]
+                ]), 3));
+                var line = new THREE.Line(lineGeo, lineMaterial);
+                scene.add(line);
+                lines.push(line);
+              }
+            }
+          }
+
+          camera.position.z = 8;
+          var mouseX = 0, mouseY = 0;
+          document.addEventListener('mousemove', function(e) {
+            mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+            mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+          });
+
+          function animate() {
+            requestAnimationFrame(animate);
+            particles.rotation.x += 0.0003;
+            particles.rotation.y += 0.0005;
+            for (var l = 0; l < lines.length; l++) {
+              lines[l].rotation.x = particles.rotation.x;
+              lines[l].rotation.y = particles.rotation.y;
+            }
+            camera.position.x += (mouseX * 0.5 - camera.position.x) * 0.02;
+            camera.position.y += (-mouseY * 0.5 - camera.position.y) * 0.02;
+            camera.lookAt(scene.position);
+            renderer.render(scene, camera);
+          }
+          animate();
+
+          window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+          });
+        } catch(e) {
+          console.log('Three.js background no disponible');
+        }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initThree);
+      } else {
+        initThree();
+      }
+    })();
+
+    // Step navigation
+    var currentStep = 0;
+    var totalSteps = 4;
+    var steps = document.querySelectorAll('.step');
+    var dots = document.querySelectorAll('.progress-step');
+
+    function showStep(n) {
+      steps.forEach(function(s, i) {
+        s.classList.toggle('active', i === n);
+      });
+      dots.forEach(function(d, i) {
+        d.classList.toggle('active', i === n);
+        d.classList.toggle('completed', i < n);
+      });
+      var prevBtn = document.getElementById('prevBtn');
+      var nextBtn = document.getElementById('nextBtn');
+      var submitBtn = document.getElementById('submitBtn');
+      prevBtn.style.visibility = n === 0 ? 'hidden' : 'visible';
+      if (n === totalSteps - 1) {
+        nextBtn.style.display = 'none';
+        submitBtn.style.display = 'inline-block';
+      } else {
+        nextBtn.style.display = 'inline-block';
+        submitBtn.style.display = 'none';
+      }
+    }
+
+    function nextStep() {
+      // Validate current step before proceeding
+      var stepEl = steps[currentStep];
+      var requiredInputs = stepEl.querySelectorAll('input[required], select[required]');
+      var valid = true;
+      requiredInputs.forEach(function(input) {
+        if (!input.value.trim()) {
+          input.classList.add('error');
+          valid = false;
+        } else {
+          input.classList.remove('error');
+        }
+      });
+      if (!valid) return;
+
+      if (currentStep < totalSteps - 1) {
+        currentStep++;
+        showStep(currentStep);
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 0) {
+        currentStep--;
+        showStep(currentStep);
+      }
+    }
+
+    // Policy accordion toggle
+    function togglePolicy(btn) {
+      var item = btn.parentElement;
+      item.classList.toggle('open');
+    }
+
+    // RUT formatting on input
+    document.querySelectorAll('input[pattern^="^\\\\d"]').forEach(function(input) {
+      input.addEventListener('blur', function() {
+        var val = this.value.replace(/[^0-9kK]/g, '');
+        if (val.length > 1) {
+          var dv = val.slice(-1);
+          var nums = val.slice(0, -1);
+          var parts = [];
+          while (nums.length > 3) {
+            parts.unshift(nums.slice(-3));
+            nums = nums.slice(0, -3);
+          }
+          parts.unshift(nums);
+          this.value = parts.join('.') + '-' + dv.toUpperCase();
+        }
+      });
+    });
+
+    // Form submit spinner
+    var form = document.getElementById('wizardForm');
+    var submitBtn = document.getElementById('submitBtn');
+    if (form && submitBtn) {
+      form.addEventListener('submit', function() {
+        submitBtn.classList.add('loading');
+        submitBtn.disabled = true;
+      });
+    }
+
+    showStep(0);
+  </script>
+</body>
+</html>

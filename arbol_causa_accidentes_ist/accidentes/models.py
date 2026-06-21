@@ -215,23 +215,24 @@ class Accidentes(models.Model):
     # Datos del accidente
     fecha_accidente = models.DateField(null=True)
     hora_accidente = models.TimeField(null=True, blank=True)
-    lugar_accidente = models.CharField(max_length=255, blank=True)
-    tipo_accidente = models.CharField(max_length=100, choices=TIPO_ACCIDENTE_CHOICES, blank=True)
-    naturaleza_lesion = models.CharField(max_length=255, blank=True)
-    parte_afectada = models.CharField(max_length=255, blank=True)
-    tarea = models.CharField(max_length=255, blank=True)
-    operacion = models.CharField(max_length=255, blank=True)
-    danos_personas = models.CharField(max_length=2, choices=OPCIONES_SI_NO, blank=True)
-    danos_propiedad = models.CharField(max_length=2, choices=OPCIONES_SI_NO, blank=True)
-    perdidas_proceso = models.CharField(max_length=2, choices=OPCIONES_SI_NO, blank=True)
-    contexto = models.TextField(blank=True)
-    circunstancias = models.TextField(blank=True)
+    lugar_accidente = models.CharField(max_length=255, blank=True, null=True)
+    tipo_accidente = models.CharField(max_length=100, choices=TIPO_ACCIDENTE_CHOICES, blank=True, null=True)
+    naturaleza_lesion = models.CharField(max_length=255, blank=True, null=True)
+    parte_afectada = models.CharField(max_length=255, blank=True, null=True)
+    tarea = models.CharField(max_length=255, blank=True, null=True)
+    operacion = models.CharField(max_length=255, blank=True, null=True)
+    danos_personas = models.CharField(max_length=2, choices=OPCIONES_SI_NO, blank=True, null=True)
+    danos_propiedad = models.CharField(max_length=2, choices=OPCIONES_SI_NO, blank=True, null=True)
+    perdidas_proceso = models.CharField(max_length=2, choices=OPCIONES_SI_NO, blank=True, null=True)
+    contexto = models.TextField(blank=True, null=True)
+    circunstancias = models.TextField(blank=True, null=True)
 
     # NUEVA COLUMNA (hasta 1000 caracteres)
     resumen = models.CharField(
         "Resumen",
         max_length=1000,
         blank=True,
+        null=True,
         help_text="Resumen breve del accidente (máx. 1000 caracteres)."
     )
 

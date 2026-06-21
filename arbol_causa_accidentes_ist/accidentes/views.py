@@ -840,3 +840,165 @@ def privacy_policies_accept(request):
 
     next_url = request.session.pop("post_consent_next", None)
     return redirect(next_url or reverse("accidentes:home"))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Quick Start Wizard
+# ─────────────────────────────────────────────────────────────────────────────
+
+from datetime import datetime
+from django.contrib.auth import login, get_user_model
+from django.db.models import Max
+
+from .models import Holdings, Empresas, Trabajadores
+from accounts.models import normaliza_rut
+
+
+class InicioRapidoView(View):
+    template_name = "accidentes/inicio_rapido.html"
+
+    def get(self, request):
+        return render(request, self.template_name)
+
+    def post(self, request):
+        import traceback
+
+        data = {k: v.strip() for k, v in request.POST.items()}
+        errors = {}
+
+        # Required fields
+        required = {
+            "nombre_prevencionista": "Nombre del prevencionista",
+            "rut_prevencionista": "RUT del prevencionista",
+            "email_prevencionista": "Email del prevencionista",
+            "nombre_trabajador": "Nombre del trabajador",
+            "rut_trabajador": "RUT del trabajador",
+            "fecha_nacimiento": "Fecha de nacimiento",
+            "nombre_empresa": "Nombre de la empresa",
+            "rut_empresa": "RUT de la empresa",
+            "centro_nombre": "Nombre del centro de trabajo",
+        }
+        for field, label in required.items():
+            if not data.get(field):
+                errors[field] = f"{label} es obligatorio."
+
+        # Checkboxes
+        if data.get("acepto_politicas") != "on":
+            errors["acepto_politicas"] = "Debe aceptar las politicas de privacidad."
+        if data.get("confirmo_datos") != "on":
+            errors["confirmo_datos"] = "Debe confirmar que los datos son correctos."
+
+        if errors:
+            return render(request, self.template_name, {"errors": errors, "data": data})
+
+        try:
+            with transaction.atomic():
+                # Normalize RUTs
+                rut_prev = normaliza_rut(data["rut_prevencionista"])
+                rut_trab = normaliza_rut(data["rut_trabajador"])
+                rut_emp  = normaliza_rut(data["rut_empresa"])
+
+                # Holding
+                nombre_empresa = data["nombre_empresa"]
+                holding, _ = Holdings.objects.get_or_create(nombre=nombre_empresa)
+
+                # Empresa (reuse if exists)
+                empresa = Empresas.objects.filter(rut_empresa=rut_emp).first()
+                if not empresa:
+                    empresa = Empresas.objects.create(
+                        holding=holding,
+                        empresa_sel=nombre_empresa,
+                        rut_empresa=rut_emp,
+                        actividad=data.get("actividad_empresa", ""),
+                        direccion_empresa=data.get("direccion_empresa", ""),
+                        region=data.get("region_empresa", ""),
+                        comuna=data.get("comuna_empresa", ""),
+                    )
+
+                # Centro de trabajo
+                centro = CentrosTrabajo.objects.create(
+                    empresa=empresa,
+                    nombre_local=data["centro_nombre"],
+                    direccion_centro=data.get("centro_direccion", ""),
+                    region=data.get("centro_region", ""),
+                    comuna=data.get("centro_comuna", ""),
+                )
+
+                # Trabajador
+                trabajador, _ = Trabajadores.objects.get_or_create(
+                    rut_trabajador=rut_trab,
+                    defaults={
+                        "empresa": empresa,
+                        "nombre_trabajador": data["nombre_trabajador"],
+                        "fecha_nacimiento": data.get("fecha_nacimiento") or None,
+                        "nacionalidad": data.get("nacionalidad", ""),
+                        "estado_civil": data.get("estado_civil", ""),
+                        "domicilio": data.get("domicilio", ""),
+                        "cargo_trabajador": data.get("cargo", ""),
+                        "contrato": data.get("tipo_contrato", ""),
+                    },
+                )
+
+                # User for prevencionista
+                User = get_user_model()
+                user, created = User.objects.get_or_create(
+                    rut=rut_prev,
+                    defaults={
+                        "username": rut_prev,
+                        "email": data["email_prevencionista"],
+                        "nombre": data["nombre_prevencionista"],
+                        "rol": ROLE_INVESTIGADOR,
+                        "empresa": empresa,
+                    },
+                )
+                if created:
+                    user.set_password(rut_prev)
+                # Sincronizar datos siempre (get_or_create no actualiza defaults si ya existe)
+                user.empresa = empresa
+                user.nombre = data["nombre_prevencionista"]
+                user.email = data["email_prevencionista"]
+                user.must_change_password = False
+                user.save()
+
+                # Codigo accidente
+                current_year = datetime.now().year
+                last_id = Accidentes.objects.aggregate(max_id=Max("accidente_id"))["max_id"] or 0
+                codigo = f"ACC-{current_year}-{last_id + 1:06d}"
+
+                accidente = Accidentes.objects.create(
+                    codigo_accidente=codigo,
+                    holding=holding,
+                    empresa=empresa,
+                    centro=centro,
+                    trabajador=trabajador,
+                    usuario_asignado=user,
+                    creado_por=user,
+                )
+
+                # Privacy consent (all three laws)
+                ip = (request.META.get("HTTP_X_FORWARDED_FOR") or "").split(",")[0].strip() or request.META.get("REMOTE_ADDR", "")
+                ua = (request.META.get("HTTP_USER_AGENT") or "")[:400]
+                for ley in ("21.459", "21.663", "21.719"):
+                    UserPrivacyConsent.objects.get_or_create(
+                        usuario=user,
+                        ley_numero=ley,
+                        version="v1.0",
+                        defaults={
+                            "aceptado_en": timezone.now(),
+                            "ip": ip,
+                            "user_agent": ua,
+                        },
+                    )
+
+                # Atomic termina aca — commit a la DB
+
+            # Auto-login FUERA del atomic para evitar SessionInterrupted
+            login(request, user, backend="accounts.backends.RutOnlyBackend")
+
+            messages.success(request, f"Caso {codigo} creado exitosamente.")
+            return redirect(reverse("accidentes:empresa", kwargs={"codigo": codigo}))
+
+        except Exception as e:
+            logger.error("InicioRapidoView error: %s", traceback.format_exc())
+            errors["general"] = f"Error al crear el caso: {str(e)}"
+            return render(request, self.template_name, {"errors": errors, "data": data})

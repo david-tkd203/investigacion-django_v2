@@ -1,6 +1,6 @@
 /* ===== Banda IST morada ===== */
 .ist-hero {
-    background: linear-gradient(135deg, #51287A 0%, #7A3DBD 100%);
+    background: linear-gradient(135deg, #92400e 0%, #d97706 100%);
     border-radius: 16px;
     box-shadow: 0 8px 24px rgba(81,40,122,.25);
 }
@@ -64,7 +64,7 @@
     justify-content: space-between;
     gap: 8px;
     padding: 12px 14px 8px;
-    background: linear-gradient(0deg, rgba(122,61,189,.06), rgba(122,61,189,.06));
+    background: linear-gradient(0deg, rgba(217,119,6,.06), rgba(217,119,6,.06));
     border-bottom: 1px solid #EFEAF8;
 }
 .case-code {
@@ -88,7 +88,7 @@
     align-items: start;
     margin: 6px 0;
 }
-.cols-icon { color: #7A3DBD; margin-top: 2px; }
+.cols-icon { color: #d97706; margin-top: 2px; }
 .cols-label {
     font-size: .82rem;
     color: #7a7a7a;
@@ -206,7 +206,7 @@
     max-width:70%;
 }
 .case-title-icon{
-    color:#7A3DBD;
+    color:#d97706;
     font-size:1rem;
     flex:0 0 auto;
 }

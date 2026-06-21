@@ -4,15 +4,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="icon" type="image/x-icon" href="{% static 'accidentes/img/favicon-ist.ico' %}">
-  <title>Inicio de sesión - IST</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23d97706'/%3E%3Cpath d='M10 22V12l6 4 6-4v10' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <title>Inicio de sesión</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'accidentes/css/login.css' %}">
+  <style>
+    html { background: #0c0c0e; }
+  </style>
 </head>
 <body>
+  <!-- Three.js background -->
+  <canvas id="three-canvas"></canvas>
+
   <div class="login-container">
     <div class="header">
-      <img src="{% static 'img/logo_ist.png' %}" alt="IST Logo" class="logo">
-      <h1 class="app-title">Asistente de investigación de accidentes del trabajo</h1>
+      <div class="app-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a10 10 0 1 0 10 10"/>
+          <path d="M12 12 8 8"/>
+          <path d="M12 12 16 8"/>
+          <path d="M12 12v6"/>
+        </svg>
+      </div>
+      <h1 class="app-title">Investigación de Accidentes</h1>
+      <p class="app-subtitle">Plataforma de investigación asistida por IA</p>
     </div>
 
     <div class="form-section">
@@ -81,25 +98,133 @@
 
         <button type="submit" class="login-button" id="loginBtn">Iniciar Sesión</button>
         <a href="{% url 'accounts:password_reset' %}" class="forgot-password">Recuperar contraseña</a>
+        <div style="text-align:center;margin-top:16px;padding-top:16px;border-top:1px solid #27272a;">
+          <span style="color:#71717a;font-size:13px;">¿Nuevo caso?</span>
+          <a href="{% url 'inicio_rapido' %}" style="display:inline-block;margin-top:4px;color:#d97706;font-size:13px;font-weight:500;text-decoration:none;">
+            Crear investigacion rapida
+          </a>
+        </div>
       </form>
     </div>
   </div>
 
   <script>
-    (function(){
-      const form = document.getElementById('loginForm');
-      const btn  = document.getElementById('loginBtn');
-      if (form && btn) {
-        form.addEventListener('submit', function () {
-          btn.classList.add('loading');
-          btn.disabled = true;
-        });
-        window.addEventListener('load', function () {
-          btn.classList.remove('loading');
-          btn.disabled = false;
-        });
+  (function(){
+    // ─── Three.js Particle Network ───────────────────────────
+    var canvas = document.getElementById('three-canvas');
+    if (!canvas) return;
+
+    function initThree() {
+      if (typeof THREE === 'undefined') {
+        // Cargar Three.js dinámicamente si no está disponible
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+        s.onload = startScene;
+        document.head.appendChild(s);
+      } else {
+        startScene();
       }
-    })();
+    }
+
+    function startScene() {
+      if (typeof THREE === 'undefined') return;
+      try {
+        var scene = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        var renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        var count = 180;
+        var positions = new Float32Array(count * 3);
+        for (var i = 0; i < count * 3; i++) {
+          positions[i] = (Math.random() - 0.5) * 20;
+        }
+        var geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        var material = new THREE.PointsMaterial({
+          size: 0.06, color: 0xd97706, transparent: true, opacity: 0.5,
+        });
+        var particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+
+        var lineMaterial = new THREE.LineBasicMaterial({
+          color: 0xd97706, transparent: true, opacity: 0.08,
+        });
+
+        var lines = [];
+        var pos = geometry.attributes.position.array;
+        for (var i = 0; i < count; i++) {
+          for (var j = i + 1; j < count; j++) {
+            var dx = pos[i*3] - pos[j*3], dy = pos[i*3+1] - pos[j*3+1], dz = pos[i*3+2] - pos[j*3+2];
+            if (Math.sqrt(dx*dx + dy*dy + dz*dz) < 3.5) {
+              var lineGeo = new THREE.BufferGeometry();
+              lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+                pos[i*3], pos[i*3+1], pos[i*3+2],
+                pos[j*3], pos[j*3+1], pos[j*3+2]
+              ]), 3));
+              var line = new THREE.Line(lineGeo, lineMaterial);
+              scene.add(line);
+              lines.push(line);
+            }
+          }
+        }
+
+        camera.position.z = 8;
+        var mouseX = 0, mouseY = 0;
+        document.addEventListener('mousemove', function(e) {
+          mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+          mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+        });
+
+        function animate() {
+          requestAnimationFrame(animate);
+          particles.rotation.x += 0.0003;
+          particles.rotation.y += 0.0005;
+          for (var l = 0; l < lines.length; l++) {
+            lines[l].rotation.x = particles.rotation.x;
+            lines[l].rotation.y = particles.rotation.y;
+          }
+          camera.position.x += (mouseX * 0.5 - camera.position.x) * 0.02;
+          camera.position.y += (-mouseY * 0.5 - camera.position.y) * 0.02;
+          camera.lookAt(scene.position);
+          renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', function() {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+      } catch(e) {
+        // Three.js no disponible, se ignora
+        console.log('Three.js background no disponible');
+      }
+    }
+
+    // Iniciar inmediatamente o cuando cargue
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initThree);
+    } else {
+      initThree();
+    }
+
+    // ─── Form spinner ───────────────────────────────────────
+    const form = document.getElementById('loginForm');
+    const btn  = document.getElementById('loginBtn');
+    if (form && btn) {
+      form.addEventListener('submit', function () {
+        btn.classList.add('loading');
+        btn.disabled = true;
+      });
+      window.addEventListener('load', function () {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+      });
+    }
+  })();
   </script>
 </body>
 </html>

@@ -191,10 +191,10 @@
 #arbol-container > .text-center.mb-4,
 #arbol-container > .text-end.mb-3 {
     --ist-brand: #51287A;   /* morado IST */
-    --ist-accent: #7A3DBD;
+    --accent: #d97706;
     --ist-border: #E8E6EE;
     background:
-        radial-gradient(900px 300px at -10% 0%, rgba(122,61,189,0.07) 0%, transparent 60%),
+        radial-gradient(900px 300px at -10% 0%, rgba(217,119,6,0.07) 0%, transparent 60%),
         #fff;
     border: 1px solid var(--ist-border);
     border-left: 6px solid var(--ist-brand);

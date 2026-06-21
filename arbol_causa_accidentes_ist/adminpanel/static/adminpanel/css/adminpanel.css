@@ -1,6 +1,6 @@
 :root {
-            --primary-color: #51217d;
-            --secondary-color: #cf2484;
+            --primary-color: #d97706;
+            --secondary-color: #ea580c;
             --sidebar-width: 280px !important;
         }
 
@@ -88,7 +88,7 @@
         }
 
         .sidebar-nav-link.active {
-            background-color: #602795;
+            background-color: #b45309;
             font-weight: 600;
             position: relative;
         }
@@ -149,14 +149,14 @@
         /* Custom Cards */
         .card {
             padding: 5px;
-            box-shadow:0 4px 20px rgba(82,33,125,0.08);
+            box-shadow:0 4px 20px rgba(217,119,6,0.08);
             border-radius: 10px;
             border: 1px solid #dfdfdf;
         }
 
         .card-filter {
             padding: 5px;
-            box-shadow:0 4px 20px rgba(82,33,125,0.08);
+            box-shadow:0 4px 20px rgba(217,119,6,0.08);
             border-radius: 10px;
             border: 1px solid #dfdfdf;
         }

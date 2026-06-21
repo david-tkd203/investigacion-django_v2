@@ -1,5 +1,9 @@
 # IST Investiga — Asistente de Accidentes (Django)
 
+> **Rama `demo`** — Versión con onboarding rápido para testers.  
+> Incluye wizard de 4 pasos que reemplaza el login, auto-creación de casos,  
+> Cloudflare Tunnel para acceso público, y firmas de políticas (Leyes 21.459, 21.663, 21.719).
+
 Plataforma web para **investigar accidentes laborales** con apoyo de **IA**, formularios guiados, gestión de documentos y **trazabilidad** de punta a punta. Orquesta entrevistas, relato, hechos, árbol de causa, medidas correctivas e informe final en un flujo único.
 
 > Este README integra: la documentación existente del proyecto, la estructura real del repositorio y una guía extendida para desarrollo, despliegue y operación.
@@ -323,9 +327,33 @@ accounts/
 
 ---
 
+## Demo — Onboarding Rápido (rama demo)
+
+La rama `demo` incluye un **wizard de inicio rápido** que reemplaza temporalmente el login:
+
+1. **Acceso**: entrar al link público de Cloudflare Tunnel (sin cuenta ni login)
+2. **Paso 1 — Prevencionista**: nombre, RUT, email
+3. **Paso 2 — Trabajador**: nombre, RUT, fecha nac., nacionalidad, cargo, contrato
+4. **Paso 3 — Empresa + Centro**: nombre, RUT, dirección, región, comuna
+5. **Paso 4 — Políticas**: lectura y aceptación de Leyes 21.459, 21.663, 21.719
+6. **Auto-creación**: se crean Holding, Empresa, Centro, Trabajador, Usuario, Accidente + consentimiento de datos
+7. **Auto-login**: redirige al flujo de investigación completo
+
+> ⚠️ Los datos del trabajador se usan solo para la investigación. No se comparten con terceros ni se tratan para otros fines. El trabajador puede solicitar la eliminación inmediata de sus datos (Ley 21.719).
+
+### Despliegue demo
+
+```bash
+docker compose -f docker-compose-dev.yml up -d --build
+```
+
+El stack incluye: Django + Gunicorn, MySQL, Nginx, Ollama (IA local), Cloudflare Tunnel (link público).
+
+---
+
 ## Flujo de Uso (Guía de Usuario)
 
-1. **Ingreso** (login con RUT y contraseña).  
+1. **Ingreso** (wizard de inicio rápido o login con RUT y contraseña).  
 2. **Home**: listado de casos asignados con resumen (empresa, datos clave).  
 3. **Datos Empresa**: región, comuna, centro de trabajo (autocompletado, validaciones).  
 4. **Datos Trabajador**: datos personales y **antigüedad** (empresa/cargo).  

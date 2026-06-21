@@ -3,6 +3,8 @@ from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
 
+from accidentes.views import InicioRapidoView
+
 urlpatterns = [
     path("admin/", admin.site.urls),
 
@@ -16,6 +18,9 @@ urlpatterns = [
     # App del panel de administración
     path("adminpanel/", include("adminpanel.urls", namespace="adminpanel")),
 
-    # Raíz → login
-    path("", lambda request: redirect("accounts:login"), name="root"),
+    # Quick Start Wizard
+    path("inicio/", InicioRapidoView.as_view(), name="inicio_rapido"),
+
+    # Raíz → wizard
+    path("", lambda request: redirect("inicio_rapido"), name="root"),
 ]
