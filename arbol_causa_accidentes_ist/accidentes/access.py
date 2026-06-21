@@ -74,25 +74,6 @@ def scope_empresas_q(user) -> Q:
     # investigadores sin empresa: no ven nada global
     return Q(pk__in=[])
 
-def empresa_en_alcance(user, empresa_id, *, session_accidente_id=None) -> bool:
-    try:
-        eid = int(empresa_id)
-    except (TypeError, ValueError):
-        return False
-
-    # si hay accidente en sesión, prioriza coherencia
-    if session_accidente_id:
-        try:
-            acc = Accidentes.objects.get(pk=int(session_accidente_id))
-            if acc.empresa_id:
-                return acc.empresa_id == eid
-        except Exception:
-            pass
-
-    # si no hay sesión o no tiene empresa, usa alcance general por rol
-    return Empresas.objects.filter(pk=eid).filter(scope_empresas_q(user)).exists()
-
-
 # ---------- utilidades internas para leer asignaciones del usuario ----------
 def _safe_ids_from_attr(obj, attr_name: str):
     try:

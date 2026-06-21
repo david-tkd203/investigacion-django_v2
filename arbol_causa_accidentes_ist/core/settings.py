@@ -28,14 +28,21 @@ OPENAI_API_KEY = config("OPENAI_API_KEY")
 DEEPSEEK_API_KEY = config("DEEPSEEK_API_KEY")
 DEFAULT_MODEL = config("DEFAULT_MODEL", default="gpt-4")
 FALLBACK_MODEL = config("FALLBACK_MODEL", default="gpt-3.5-turbo")
+
+# ── IA Provider ────────────────────────────────────────
+IA_PROVIDER = config("IA_PROVIDER", default="ollama")
+OLLAMA_BASE_URL = config("OLLAMA_BASE_URL", default="http://localhost:11434/v1")
+OLLAMA_DEFAULT_MODEL = config("OLLAMA_DEFAULT_MODEL", default="qwen2.5:7b")
+GROQ_API_KEY = config("GROQ_API_KEY", default="")
+GROQ_DEFAULT_MODEL = config("GROQ_DEFAULT_MODEL", default="llama-3.1-8b-instant")
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-f5em2y_8!!w*b_%9bb_6eq&n3qv7^f0-t6jyf)j=i^1jf=qfpo"
+SECRET_KEY = config("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
 
 IA_LOG_PROMPTS = True
 
@@ -53,18 +60,30 @@ LOGGING = {
 }
 
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '*').split(',')
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost", # REMOVE ON PROD
-    "http://20.106.186.24", # REMOVE ON PROD
-    "http://10.11.23.35:5085", # REMOVE ON PROD
-    "http://10.11.23.23:5085", # REMOVE ON PROD
-    "http://10.11.20.89" # REMOVE ON PROD 
-]
+CSRF_TRUSTED_ORIGINS = os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', 'http://localhost').split(',')
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS += [
+        "http://127.0.0.1",
+        "http://localhost",
+    ]
 
 USE_X_FORWARDED_HOST = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'http')
+
+# Seguridad adicional (no activas en dev para evitar dolores de cabeza)
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'DENY'
+    CSRF_COOKIE_HTTPONLY = True
 
 # Application definition
 
@@ -136,7 +155,7 @@ DB_NAME     = os.getenv('DB_NAME'     , None)
 
 # Lógica de base de datos
 if (AMBIENTE := os.getenv("AMBIENTE", "produccion").lower()) == "desarrollo":
-    print("🔧 Modo desarrollo: usando SQLite")
+    print("[DEV] Modo desarrollo: usando SQLite")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -144,7 +163,7 @@ if (AMBIENTE := os.getenv("AMBIENTE", "produccion").lower()) == "desarrollo":
         }
     }
 else:
-    print("🚀 Modo producción: usando base de datos externa")
+    print("[PROD] Modo produccion: usando base de datos externa")
     DATABASES = {
         'default': {
             'ENGINE'  : 'django.db.backends.' + DB_ENGINE,

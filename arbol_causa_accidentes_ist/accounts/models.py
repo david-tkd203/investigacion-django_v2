@@ -2,6 +2,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.exceptions import ValidationError
+from accidentes.constants import ROL_CHOICES, TEAM_CHOICES
 import re
 
 def normaliza_rut(rut: str) -> str:
@@ -27,19 +28,8 @@ def valida_rut_chile(rut: str) -> bool:
     return dv == dv_calc
 
 class User(AbstractUser):
-    TEAM_CHOICES = [
-        ("staff", "Staff IST"),
-        ("adherente", "Adherente"),
-    ]
-    ROL_CHOICES = [
-        ("admin", "Admin Global"),
-        ("admin_ist", "Admin IST"),
-        ("admin_holding", "Admin Holding"),
-        ("admin_empresa", "Admin Empresa"),
-        ("coordinador", "Coordinador"),
-        ("investigador", "Investigador"),
-        ("investigador_ist", "Investigador IST"),  # <-- añade esto
-    ]
+    TEAM_CHOICES = TEAM_CHOICES
+    ROL_CHOICES = ROL_CHOICES
 
 
     # Opcional: email único (manteniendo username como identificador)

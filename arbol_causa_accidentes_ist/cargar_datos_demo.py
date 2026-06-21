@@ -1,8 +1,9 @@
+import os
 from datetime import date, time
 from django.db.models.signals import pre_save, post_save
 from accidentes.models import Holdings, Empresas, CentrosTrabajo, Trabajadores, Usuarios, Accidentes
 
-print("\n🔇 Desconectando signals para evitar envío de correos...")
+print("\n[DEMO] Desconectando signals para evitar envio de correos...")
 # Desactivar signals temporalmente
 pre_save.disconnect(sender=Accidentes)
 post_save.disconnect(sender=Accidentes)
@@ -40,7 +41,7 @@ usuario = Usuarios.objects.create(
     apemat="Muñoz",
     email="andrea@demo.cl",
     empresa=empresa,
-    pass_field="segura123",
+    pass_field=os.getenv("DEMO_USER_PASSWORD", ""),
     tipo=1,
     Cargo="Consultor"  # coincide con tu modelo (con C mayúscula)
 )
