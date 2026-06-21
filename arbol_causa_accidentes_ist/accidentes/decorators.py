@@ -2,8 +2,9 @@
 from functools import wraps
 from django.http import Http404
 from accidentes.access import get_accidente_scoped_or_404
+from accidentes.constants import SOURCE_SESSION, SOURCE_KWARG
 
-def require_accidente_scope(*, source="kwarg", kwarg="codigo", param=None, select_related=None):
+def require_accidente_scope(*, source=SOURCE_KWARG, kwarg="codigo", param=None, select_related=None):
     """
     source: 'session' | 'kwarg'
     kwarg : nombre del kwarg que trae el código (por defecto 'codigo')
@@ -16,10 +17,10 @@ def require_accidente_scope(*, source="kwarg", kwarg="codigo", param=None, selec
     def decorator(viewfunc):
         @wraps(viewfunc)
         def wrapper(request, *args, **kwargs):
-            if source not in {"session", "kwarg"}:
+            if source not in {SOURCE_SESSION, SOURCE_KWARG}:
                 raise RuntimeError("source debe ser 'kwarg' o 'session'.")
 
-            if source == "session":
+            if source == SOURCE_SESSION:
                 acc_id = request.session.get("accidente_id")
                 if not acc_id:
                     raise Http404("Caso no disponible.")

@@ -24,6 +24,7 @@ from django.urls import reverse
 from accidentes.utils.mixins import AccidenteScopedByCodigoMixin
 from accidentes.decorators import require_accidente_scope
 from accidentes.access import empresa_en_alcance, scope_accidentes_q
+from accidentes.constants import ROLE_INVESTIGADOR, ROLE_INVESTIGADOR_IST
 
 from django.db.models import Q, F
 from django.core.paginator import Paginator, EmptyPage
@@ -670,10 +671,10 @@ def scope_accidentes_listado_q(user) -> Q:
     rol = getattr(user, "rol", None)
     uid = getattr(user, "id", None)
 
-    if rol == "investigador":
+    if rol == ROLE_INVESTIGADOR:
         return Q(empresa_id=getattr(user, "empresa_id", None)) & Q(usuario_asignado_id=uid)
 
-    if rol == "investigador_ist":
+    if rol == ROLE_INVESTIGADOR_IST:
         return Q(usuario_asignado_id=uid)
 
     return scope_accidentes_q(user)

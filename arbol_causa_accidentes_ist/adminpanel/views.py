@@ -26,6 +26,7 @@ from accidentes.access import (
     SUPER_ROLES,
     scope_accidentes_q,  # si tu mixin lo necesita
 )
+from accidentes.constants import ROLE_ADMIN_HOLDING
 
 User = get_user_model()
 
@@ -363,7 +364,7 @@ def trabajador_modal_htmx(request):
     rol = getattr(request.user, "rol", None)
 
     # **Regla**: super-roles y admin_holding deben elegir empresa antes de abrir modal
-    if (rol in SUPER_ROLES or rol == "admin_holding") and not empresa_id:
+    if (rol in SUPER_ROLES or rol == ROLE_ADMIN_HOLDING) and not empresa_id:
         html = render_to_string(
             "adminpanel/partials/crear/_seleccion_requerida.html",
             {"msg": "Selecciona primero el holding y la empresa para crear un trabajador."},

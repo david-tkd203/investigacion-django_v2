@@ -5,20 +5,21 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from .models import Accidentes, Empresas, Holdings, Trabajadores
 from django.core.exceptions import PermissionDenied
+from .constants import (
+    ROLE_SUPER_ADMIN, ROLE_ADMIN_IST, ROLE_ADMIN_HOLDING, ROLE_ADMIN_EMPRESA,
+    ROLE_INVESTIGADOR, ROLE_INVESTIGADOR_IST, SUPER_ROLES, ASSIGNABLE_ROLES,
+)
 import logging
 logger = logging.getLogger(__name__)
-
-
-SUPER_ROLES = {"admin", "admin_ist", "investigador_ist"}
 
 # Defino alcance común para todos los lugares donde vaya a listar un accidente, davisino, no toques esto jaja
 def scope_accidentes_q(user) -> Q:
     rol = getattr(user, "rol", None)
     if rol in SUPER_ROLES:
         return Q()
-    if rol == "admin_holding":
+    if rol == ROLE_ADMIN_HOLDING:
         return Q(holding_id=getattr(user, "holding_id", None))
-    if rol in {"admin_empresa", "investigador"}:
+    if rol in {ROLE_ADMIN_EMPRESA, ROLE_INVESTIGADOR}:
         return Q(empresa_id=getattr(user, "empresa_id", None))
     # fallback: solo asignados
     return Q(usuario_asignado_id=getattr(user, "id", None))
@@ -36,7 +37,7 @@ def get_accidente_scoped_or_404(user, codigo, select_related=()):
 
     rol = getattr(user, "rol", None)
 
-    if rol == "investigador_ist":
+    if rol == ROLE_INVESTIGADOR_IST:
         # Única regla: debe estar asignado. No validar empresa/holding.
         asignado = (acc.usuario_asignado_id == getattr(user, "id", None))
         if not asignado:
@@ -47,7 +48,7 @@ def get_accidente_scoped_or_404(user, codigo, select_related=()):
             raise PermissionDenied("Acceso denegado: debes estar asignado a este accidente.")
         return acc
 
-    if rol == "investigador":
+    if rol == ROLE_INVESTIGADOR:
         # Para investigador normal, ya vienes acotado por empresa desde visibles_para(user);
         # además, exigimos asignación.
         asignado = (acc.usuario_asignado_id == getattr(user, "id", None))
@@ -65,11 +66,11 @@ def get_accidente_scoped_or_404(user, codigo, select_related=()):
 
 def scope_empresas_q(user) -> Q:
     rol = getattr(user, "rol", None)
-    if rol in {"admin", "admin_ist", "investigador_ist"}:
+    if rol in SUPER_ROLES:
         return Q()
-    if rol == "admin_holding":
+    if rol == ROLE_ADMIN_HOLDING:
         return Q(holding_id=getattr(user, "holding_id", None))
-    if rol in {"admin_empresa", "investigador"}:
+    if rol in {ROLE_ADMIN_EMPRESA, ROLE_INVESTIGADOR}:
         return Q(pk=getattr(user, "empresa_id", None))
     # investigadores sin empresa: no ven nada global
     return Q(pk__in=[])
@@ -181,7 +182,7 @@ def usuarios_permitidos_para_asignar(user, empresa_id: Optional[int] = None, *, 
     """
     U = get_user_model()
 
-    ASSIGNABLE_ROLES = {"investigador", "investigador_ist", "admin_empresa", "admin_holding", "admin", "admin_ist"}
+    ASSIGNABLE_ROLES = ASSIGNABLE_ROLES
 
     if getattr(user, "rol", None) in SUPER_ROLES:
         qs = U.objects.filter(is_active=True)
@@ -227,7 +228,7 @@ def usuarios_permitidos_para_asignar(user, empresa_id: Optional[int] = None, *, 
             if getattr(user, "rol", None) in SUPER_ROLES:
                 # ⬇️ Súper (admin/admin_ist/investigador_ist): permitir SIEMPRE investigador_ist,
                 # aun sin relación empresa/holding.
-                qs = qs.filter(q_emp) | qs.filter(rol="investigador_ist")
+                qs = qs.filter(q_emp) | qs.filter(rol=ROLE_INVESTIGADOR_IST)
                 qs = qs.distinct()
             else:
                 qs = qs.filter(q_emp).distinct()

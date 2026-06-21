@@ -1,5 +1,6 @@
 # adminpanel/utils/assignments.py
 from django.contrib.auth import get_user_model
+from accidentes.constants import ROLE_SUPER_ADMIN, ROLE_ADMIN_IST, ROLE_ADMIN_HOLDING, ROLE_ADMIN_EMPRESA, ROLE_INVESTIGADOR
 
 User = get_user_model()
 
@@ -37,25 +38,25 @@ def usuarios_permitidos_para_asignar(
     qs = User.objects.all()
 
     # Super-roles: acceso total
-    if role in ("admin", "admin_ist"):
+    if role in (ROLE_SUPER_ADMIN, ROLE_ADMIN_IST):
         return qs.order_by("first_name", "last_name", "username")
 
     # Admin Holding: restringe por holding y roles permitidos
-    if role == "admin_holding":
+    if role == ROLE_ADMIN_HOLDING:
         if not h_id:
             h_id = getattr(asignador, "holding_id", None)
         if h_id:
             qs = qs.filter(holding_id=h_id)
-        qs = qs.filter(rol__in=["admin_holding", "admin_empresa", "investigador"])
+        qs = qs.filter(rol__in=[ROLE_ADMIN_HOLDING, ROLE_ADMIN_EMPRESA, ROLE_INVESTIGADOR])
         return qs.order_by("first_name", "last_name", "username")
 
     # Admin Empresa: restringe por empresa y roles permitidos
-    if role == "admin_empresa":
+    if role == ROLE_ADMIN_EMPRESA:
         if not e_id:
             e_id = getattr(asignador, "empresa_id", None)
         if e_id:
             qs = qs.filter(empresa_id=e_id)
-        qs = qs.filter(rol__in=["admin_empresa", "investigador"])
+        qs = qs.filter(rol__in=[ROLE_ADMIN_EMPRESA, ROLE_INVESTIGADOR])
         return qs.order_by("first_name", "last_name", "username")
 
     # Investigadores no asignan

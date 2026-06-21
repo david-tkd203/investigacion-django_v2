@@ -19,7 +19,7 @@ from accidentes.constants import (
     ROLE_SUPER_ADMIN, ROLE_ADMIN_IST, ROLE_ADMIN_HOLDING, ROLE_ADMIN_EMPRESA,
     ROLE_INVESTIGADOR, ROLE_INVESTIGADOR_IST,
 )
-
+import mimetypes
 from pathlib import Path
 from typing import Any, Dict, List, Union, Tuple, Optional
 from datetime import datetime, date, time as dtime
@@ -42,6 +42,67 @@ ID_MAPPING: Dict[str, Dict[Any, Any]] = {
     "accidentes": {},
 }
 
+def _join_protected_url(*parts: str) -> str:
+    """
+    Une PROTECTED_MEDIA_URL con subcarpetas/archivo sin duplicar slashes.
+    PROTECTED_MEDIA_URL suele ser '/protected_media/'.
+    """
+    base = (getattr(settings, "PROTECTED_MEDIA_URL", "/protected_media/") or "/protected_media/").strip("/")
+    clean = [str(p).strip("/") for p in parts if p is not None and str(p).strip("/")]
+    return "/" + "/".join([base] + clean)
+
+def _sniff_ext_from_bytes(data: bytes) -> str:
+    """
+    Intenta inferir extensión por firma mágica del archivo.
+    """
+    if not data:
+        return ""
+    # PDF
+    if data[:5] == b"%PDF-":
+        return ".pdf"
+    # PNG
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return ".png"
+    # JPG
+    if data[:3] == b"\xff\xd8\xff":
+        return ".jpg"
+    # WEBP: RIFF....WEBP
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+    return ""
+
+def _best_ext(nombre_archivo: str, mime_type: str, data: bytes | None = None, fallback_name: str = "") -> str:
+    """
+    Extensión robusta (con punto):
+      1) desde nombre_archivo
+      2) desde mime_type (mapeo + mimetypes.guess_extension)
+      3) sniff por bytes (PDF/PNG/JPG/WEBP)
+      4) desde fallback_name (por si src_file.name trae ext)
+    """
+    # 1) nombre_archivo
+    ext = Path(nombre_archivo or "").suffix
+    if ext:
+        return ext.lower()
+
+    # 2) mime_type
+    mt = (mime_type or "").lower().strip()
+    if mt:
+        mapped = _ext_from_mime(mt)
+        if mapped:
+            return mapped
+        guessed = mimetypes.guess_extension(mt) or ""
+        if guessed:
+            return guessed.lower()
+
+    # 3) sniff
+    if data is not None:
+        sniffed = _sniff_ext_from_bytes(data)
+        if sniffed:
+            return sniffed
+
+    # 4) fallback_name
+    ext2 = Path(fallback_name or "").suffix
+    return (ext2.lower() if ext2 else "")
 def _map_id(entity: str, old_id: Any, new_pk: Any) -> None:
     """Registra el mapeo de ID antiguo a nuevo PK."""
     if old_id is not None and str(old_id).strip():
@@ -1203,6 +1264,22 @@ def _guess_ext(nombre_archivo: str, mime_type: str) -> str:
         return ".txt"
     return ""
 
+def _ext_from_mime(mime_type: str) -> str:
+    """
+    Devuelve la extensión (con punto) a partir del mime_type.
+    """
+    mapping = {
+        "application/pdf": ".pdf",
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "image/heic": ".heic",
+        "text/plain": ".txt",
+        "text/markdown": ".md",
+    }
+    return mapping.get((mime_type or '').lower(), "")
+
 def _resolve_src_docs_dir(logs: List[str]) -> Path:
     """
     Busca la carpeta de origen de documentos en múltiples ubicaciones.
@@ -1282,13 +1359,15 @@ def upsert_documentos(records: List[Dict[str, Any]]) -> Tuple[int, int, List[str
     src_dir = _resolve_src_docs_dir(logs)
     index = _index_source_documents(src_dir, logs)
 
+    dest_dir = Path(settings.PROTECTED_MEDIA_ROOT) / "documentos"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
     for idx, r in enumerate(records, 1):
         old_aid = r.get("accidente_id")
         codigo_accidente = r.get("codigo_accidente")
 
         # 🔍 BUSCAR ACCIDENTE
         accidente = _find_accidente(old_aid, codigo_accidente, idx, logs)
-        
         if not accidente:
             errors.append(f"[documentos:{idx}] accidente_id={old_aid} NO encontrado")
             continue
@@ -1308,45 +1387,53 @@ def upsert_documentos(records: List[Dict[str, Any]]) -> Tuple[int, int, List[str
             "nombre_archivo": nombre_archivo,
             "mime_type": mime_type,
             "subido_el": _parse_iso_dt(r.get("subido_el")) or timezone.now(),
-            "url": _safe_text(r.get("url"), 2048),
         }
 
-        # 📁 COPIAR ARCHIVO FÍSICO AL CONTENEDOR (siempre, incluso si existe en BD)
-        src_file = index.get(doc_id_str)
-        archivo_copiado = False
-        
-        if src_file and src_file.exists():
-            try:
-                # Leer archivo desde origen (local o contenedor)
-                bytes_data = src_file.read_bytes()
-                logs.append(f"[documentos:{idx}] 📄 Archivo leído -> {src_file.name} ({len(bytes_data):,} bytes)")
-                
-                # ❌ NO guardar en BD (columna contenido LONGBLOB)
-                # defaults["contenido"] = bytes_data  # ← COMENTADO: No subir a LONGBLOB
-                
-                # ✅ COPIAR archivo físico al contenedor (SIEMPRE)
-                ext = src_file.suffix or _guess_ext(nombre_archivo, mime_type)
-                filename_with_ext = f"{doc_id_str}{ext}"
-                archivo_copiado = _mirror_write_local(bytes_data, filename_with_ext, logs)
-                
-                if archivo_copiado:
-                    logs.append(f"[documentos:{idx}] ✅ Procesado correctamente (BD + Disco)")
-                else:
-                    logs.append(f"[documentos:{idx}] ⚠️  Guardado en BD, pero ERROR copiando archivo físico")
-                    
-            except Exception as e:
-                errors.append(f"[documentos:{idx}] ❌ ERROR procesando archivo -> {e}")
-                logs.append(f"[documentos:{idx}] Continuando con registro en BD sin archivo físico")
+        # 1) Si ya existe en destino <uuid>.* entonces SIEMPRE usar esa URL
+        existing_matches = sorted(dest_dir.glob(f"{doc_id_str}.*"))
+        if existing_matches:
+            stored_name = existing_matches[0].name
+            defaults["url"] = _join_protected_url("documentos", stored_name)
+            logs.append(f"[documentos:{idx}] ✅ Ya existe en destino -> {stored_name} | url={defaults['url']}")
         else:
-            # Archivo no encontrado en origen
-            if doc_id_str in index:
-                logs.append(f"[documentos:{idx}] ⚠️  Archivo en índice pero no existe -> {doc_id_str}")
+            # 2) Si no existe en destino, intentar copiar desde src (por stem uuid)
+            src_file = index.get(doc_id_str)
+            url_archivo = None
+
+            if src_file and src_file.exists():
+                try:
+                    bytes_data = src_file.read_bytes()
+                    logs.append(f"[documentos:{idx}] 📄 Origen leído -> {src_file.name} ({len(bytes_data):,} bytes)")
+
+                    ext = _best_ext(nombre_archivo, mime_type, data=bytes_data, fallback_name=src_file.name)
+                    filename_with_ext = f"{doc_id_str}{ext}" if ext else f"{doc_id_str}"
+
+                    # Copiar a contenedor
+                    ok = _mirror_write_local(bytes_data, filename_with_ext, logs)
+                    if ok:
+                        url_archivo = _join_protected_url("documentos", filename_with_ext)
+                        logs.append(f"[documentos:{idx}] ✅ Copiado a destino -> {filename_with_ext} | url={url_archivo}")
+                    else:
+                        logs.append(f"[documentos:{idx}] ⚠️  ERROR copiando a destino, se guardará BD sin archivo físico")
+                except Exception as e:
+                    errors.append(f"[documentos:{idx}] ❌ ERROR procesando archivo -> {e}")
+                    logs.append(f"[documentos:{idx}] Continuando con BD sin archivo físico")
             else:
-                logs.append(f"[documentos:{idx}] ⚠️  Archivo no encontrado en origen -> {doc_id_str}")
-            errors.append(f"[documentos:{idx}] WARN documento sin archivo físico -> {doc_id_str}")
+                logs.append(f"[documentos:{idx}] ⚠️  Archivo no encontrado en origen -> uuid={doc_id_str}")
+                errors.append(f"[documentos:{idx}] WARN documento sin archivo físico -> {doc_id_str}")
+
+            # 3) Si se copió, url interna correcta. Si no, respetar url externa del JSON
+            if url_archivo:
+                defaults["url"] = url_archivo
+            else:
+                # Solo dejar url externa si es http(s)
+                url_in = _safe_text(r.get("url"), 2048)
+                if url_in and url_in.lower().startswith(("http://", "https://")):
+                    defaults["url"] = url_in
+                else:
+                    defaults["url"] = None  # NO inventar rutas internas incorrectas
 
         try:
-            # 🔑 documento_id es la clave primaria, debe usarse en el lookup
             obj, was_created = Documentos.objects.update_or_create(
                 documento_id=doc_id_str,
                 defaults=defaults
@@ -1364,50 +1451,49 @@ def upsert_documentos(records: List[Dict[str, Any]]) -> Tuple[int, int, List[str
 
     return created, updated, logs, errors
 
-# ========== RELATOS (CON MAPEO) ==========
-def upsert_relatos(accidentes_records: list) -> tuple:
+
+def update_documentos_url(verbose: bool = True) -> int:
     """
-    Inserta relatos asociados a accidentes. Extrae los campos del JSON y crea el Relato si hay texto en 'relato' o 'preinitial_story'.
+    Repara doc.url para documentos con archivo físico REAL en disco:
+      /protected_media/documentos/<uuid>.<ext>
+
+    Regla:
+      1) Si existe <uuid>.* en PROTECTED_MEDIA_ROOT/documentos -> url = esa
+      2) Si no existe, no inventa url interna
     """
-    created = updated = 0
-    errors = []
-    logs = []
-    for idx, r in enumerate(accidentes_records, 1):
-        relato_text = r.get("relato")
-        preinitial_story = r.get("preinitial_story")
-        # Solo crear si hay relato o preinitial_story
-        if not relato_text and not preinitial_story:
+    updated = 0
+    dest_dir = Path(settings.PROTECTED_MEDIA_ROOT) / "documentos"
+    if not dest_dir.exists():
+        if verbose:
+            print(f"[update_documentos_url] WARN destino no existe: {dest_dir}")
+        return 0
+
+    docs = Documentos.objects.all()
+
+    for doc in docs:
+        doc_id = str(getattr(doc, "documento_id", "") or "").strip()
+        if not doc_id:
             continue
-        old_aid = r.get("accidente_id")
-        accidente_pk = _get_mapped_id("accidentes", old_aid)
-        if not accidente_pk:
-            errors.append(f"[relatos:{idx}] No se encontró accidente para old_id={old_aid}")
+
+        matches = sorted(dest_dir.glob(f"{doc_id}.*"))
+        if not matches:
+            # No archivo físico => no inventar url interna
             continue
-        try:
-            accidente = Accidentes.objects.get(pk=accidente_pk)
-        except Accidentes.DoesNotExist:
-            errors.append(f"[relatos:{idx}] Accidente pk={accidente_pk} no existe")
-            continue
-        # Generar UUID
-        relato_id = uuid.uuid4()
-        # Crear o actualizar (solo uno por accidente, is_current=True)
-        obj, was_created = Relato.objects.update_or_create(
-            accidente=accidente,
-            is_current=True,
-            defaults={
-                "relato_id": relato_id,
-                "relato_inicial": preinitial_story,
-                "relato_final": relato_text,
-                # El resto de campos quedan en None
-            }
-        )
-        if was_created:
-            created += 1
-            logs.append(f"[relatos:{idx}] CREATED para accidente {accidente.codigo_accidente}")
-        else:
+
+        stored_name = matches[0].name
+        url_esperada = _join_protected_url("documentos", stored_name)
+
+        if doc.url != url_esperada:
+            doc.url = url_esperada
+            doc.save(update_fields=["url"])
             updated += 1
-            logs.append(f"[relatos:{idx}] UPDATED para accidente {accidente.codigo_accidente}")
-    return created, updated, logs, errors
+            if verbose:
+                print(f"[update_documentos_url] documento_id={doc_id} url={url_esperada}")
+
+    if verbose:
+        print(f"[update_documentos_url] Total actualizados: {updated}")
+    return updated
+
 
 # ========== ORQUESTACIÓN PRINCIPAL ==========
 @transaction.atomic
@@ -1492,7 +1578,7 @@ def run(json_path: Union[str, Path] = DEFAULT_JSON_PATH) -> Dict[str, Any]:
         print(log_summary("ACCIDENTES", len(recs), c, u, errs))
 
         # 6b. RELATOS
-        c, u, logs, errs = upsert_relatos(recs)
+        #c, u, logs, errs = upsert_relatos(recs)
         res.update({"relatos_processed": len(recs), "relatos_created": c, "relatos_updated": u, "relatos_errors": errs})
         print(log_summary("RELATOS", len(recs), c, u, errs))
 

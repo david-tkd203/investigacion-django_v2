@@ -6,6 +6,10 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models import Q
 from .managers import AccidentesManager
+from .constants import (
+    ROLE_SUPER_ADMIN, ROLE_ADMIN_IST, ROLE_ADMIN_HOLDING, ROLE_ADMIN_EMPRESA,
+    ROLE_INVESTIGADOR, ROLE_INVESTIGADOR_IST,
+)
 import uuid
 
 
@@ -24,14 +28,14 @@ class Holdings(models.Model):
 class Usuarios(models.Model):
     id = models.AutoField(primary_key=True)
     rut = models.CharField(max_length=10)
-    nombre = models.CharField(max_length=100, null=True)
-    apepat = models.CharField(max_length=100, null=True)
-    apemat = models.CharField(max_length=100, null=True)
+    nombre = models.CharField(max_length=100, blank=True)
+    apepat = models.CharField(max_length=100, blank=True)
+    apemat = models.CharField(max_length=100, blank=True)
     email = models.CharField(max_length=254, unique=True)
     empresa = models.ForeignKey('Empresas', on_delete=models.CASCADE)
     pass_field = models.CharField(max_length=255, db_column='pass')
     tipo = models.IntegerField()
-    Cargo = models.CharField(max_length=100, null=True)
+    Cargo = models.CharField(max_length=100, blank=True)
 
     class Meta:
         db_table = 'usuarios'
@@ -44,12 +48,12 @@ class Empresas(models.Model):
     )
     empresa_sel = models.CharField(max_length=255)
     rut_empresa = models.CharField(max_length=20, unique=True)
-    actividad = models.CharField(max_length=255, null=True)
-    direccion_empresa = models.CharField(max_length=255, null=True)
-    telefono = models.CharField(max_length=30, null=True)
-    representante_legal = models.CharField(max_length=255, null=True)
-    region = models.CharField(max_length=100, null=True)
-    comuna = models.CharField(max_length=100, null=True)
+    actividad = models.CharField(max_length=255, blank=True)
+    direccion_empresa = models.CharField(max_length=255, blank=True)
+    telefono = models.CharField(max_length=30, blank=True)
+    representante_legal = models.CharField(max_length=255, blank=True)
+    region = models.CharField(max_length=100, blank=True)
+    comuna = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -99,12 +103,12 @@ class Trabajadores(models.Model):
 
     trabajador_id = models.AutoField(primary_key=True)
     empresa = models.ForeignKey('Empresas', null=True, on_delete=models.SET_NULL)
-    nombre_trabajador = models.CharField(max_length=255, null=True)
-    rut_trabajador = models.CharField(max_length=20, unique=True, null=True)
+    nombre_trabajador = models.CharField(max_length=255, blank=True)
+    rut_trabajador = models.CharField(max_length=20, unique=True, blank=True, default="")
     fecha_nacimiento = models.DateField(null=True)
-    nacionalidad = models.CharField(max_length=100, choices=NACIONALIDAD_CHOICES, null=True)
-    estado_civil = models.CharField(max_length=50, choices=ESTADO_CIVIL_CHOICES, null=True)
-    domicilio = models.CharField(max_length=255, null=True)
+    nacionalidad = models.CharField(max_length=100, choices=NACIONALIDAD_CHOICES, blank=True)
+    estado_civil = models.CharField(max_length=50, choices=ESTADO_CIVIL_CHOICES, blank=True)
+    domicilio = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     # >>> NUEVOS CAMPOS <<<
@@ -124,8 +128,8 @@ class Trabajadores(models.Model):
     # antiguedad_empresa = models.CharField(max_length=100, null=True)
     # antiguedad_cargo   = models.CharField(max_length=100, null=True)
 
-    cargo_trabajador = models.CharField(max_length=100, null=True)
-    contrato = models.CharField(max_length=50, choices=CONTRATO_CHOICES, null=True)
+    cargo_trabajador = models.CharField(max_length=100, blank=True)
+    contrato = models.CharField(max_length=50, choices=CONTRATO_CHOICES, blank=True)
 
     class Meta:
         db_table = 'trabajadores'
@@ -136,9 +140,9 @@ class CentrosTrabajo(models.Model):
     centro_id = models.AutoField(primary_key=True)
     empresa = models.ForeignKey(Empresas, on_delete=models.CASCADE)
     nombre_local = models.CharField(max_length=255)
-    direccion_centro = models.CharField(max_length=255, null=True)
-    region = models.CharField(max_length=100, null=True)
-    comuna = models.CharField(max_length=100, null=True)
+    direccion_centro = models.CharField(max_length=255, blank=True)
+    region = models.CharField(max_length=100, blank=True)
+    comuna = models.CharField(max_length=100, blank=True)
 
     class Meta:
         db_table = 'centros_trabajo'
@@ -211,23 +215,22 @@ class Accidentes(models.Model):
     # Datos del accidente
     fecha_accidente = models.DateField(null=True)
     hora_accidente = models.TimeField(null=True, blank=True)
-    lugar_accidente = models.CharField(max_length=255, null=True, blank=True)
-    tipo_accidente = models.CharField(max_length=100, choices=TIPO_ACCIDENTE_CHOICES, null=True, blank=True)
-    naturaleza_lesion = models.CharField(max_length=255, null=True, blank=True)
-    parte_afectada = models.CharField(max_length=255, null=True, blank=True)
-    tarea = models.CharField(max_length=255, null=True, blank=True)
-    operacion = models.CharField(max_length=255, null=True, blank=True)
-    danos_personas = models.CharField(max_length=2, choices=OPCIONES_SI_NO, null=True, blank=True)
-    danos_propiedad = models.CharField(max_length=2, choices=OPCIONES_SI_NO, null=True, blank=True)
-    perdidas_proceso = models.CharField(max_length=2, choices=OPCIONES_SI_NO, null=True, blank=True)
-    contexto = models.TextField(null=True, blank=True)
-    circunstancias = models.TextField(null=True, blank=True)
+    lugar_accidente = models.CharField(max_length=255, blank=True)
+    tipo_accidente = models.CharField(max_length=100, choices=TIPO_ACCIDENTE_CHOICES, blank=True)
+    naturaleza_lesion = models.CharField(max_length=255, blank=True)
+    parte_afectada = models.CharField(max_length=255, blank=True)
+    tarea = models.CharField(max_length=255, blank=True)
+    operacion = models.CharField(max_length=255, blank=True)
+    danos_personas = models.CharField(max_length=2, choices=OPCIONES_SI_NO, blank=True)
+    danos_propiedad = models.CharField(max_length=2, choices=OPCIONES_SI_NO, blank=True)
+    perdidas_proceso = models.CharField(max_length=2, choices=OPCIONES_SI_NO, blank=True)
+    contexto = models.TextField(blank=True)
+    circunstancias = models.TextField(blank=True)
 
     # NUEVA COLUMNA (hasta 1000 caracteres)
     resumen = models.CharField(
         "Resumen",
         max_length=1000,
-        null=True,
         blank=True,
         help_text="Resumen breve del accidente (máx. 1000 caracteres)."
     )
@@ -261,19 +264,19 @@ class Accidentes(models.Model):
             return False
 
         # Acceso total
-        if asignador.rol in ("admin", "admin_ist"):
+        if asignador.rol in (ROLE_SUPER_ADMIN, ROLE_ADMIN_IST):
             return True
 
-        if asignador.rol == "admin_holding":
+        if asignador.rol == ROLE_ADMIN_HOLDING:
             return (
-                asignado.rol in ("admin_holding", "admin_empresa", "investigador")
+                asignado.rol in (ROLE_ADMIN_HOLDING, ROLE_ADMIN_EMPRESA, ROLE_INVESTIGADOR)
                 and getattr(asignado, "holding_id", None) == getattr(asignador, "holding_id", None)
                 and (self.holding_id == getattr(asignador, "holding_id", None))
             )
 
-        if asignador.rol == "admin_empresa":
+        if asignador.rol == ROLE_ADMIN_EMPRESA:
             return (
-                asignado.rol in ("investigador", "admin_empresa")
+                asignado.rol in (ROLE_INVESTIGADOR, ROLE_ADMIN_EMPRESA)
                 and getattr(asignado, "empresa_id", None) == getattr(asignador, "empresa_id", None)
                 and (self.empresa_id == getattr(asignador, "empresa_id", None))
             )
@@ -302,7 +305,7 @@ class Accidentes(models.Model):
 
         # (1) Empresa requerida / inferida por rol del actor
         if not self.empresa:
-            if actor_rol in ("admin_empresa", "investigador"):
+            if actor_rol in (ROLE_ADMIN_EMPRESA, ROLE_INVESTIGADOR):
                 empresa_actor = getattr(actor, "empresa", None)
                 if empresa_actor:
                     self.empresa = empresa_actor
@@ -351,10 +354,10 @@ class Accidentes(models.Model):
 
         # (5b) Coherencia extra de alcance del asignado (solo si corresponde)
         if self.usuario_asignado and "usuario_asignado" not in errors and (is_create or assignee_changed):
-            if actor_rol == "admin_holding":
+            if actor_rol == ROLE_ADMIN_HOLDING:
                 if getattr(self.usuario_asignado, "holding_id", None) != self.holding_id:
                     errors["usuario_asignado"] = "El usuario asignado no pertenece al holding seleccionado."
-            elif actor_rol == "admin_empresa":
+            elif actor_rol == ROLE_ADMIN_EMPRESA:
                 if getattr(self.usuario_asignado, "empresa_id", None) != self.empresa_id:
                     errors["usuario_asignado"] = "El usuario asignado no pertenece a la empresa seleccionada."
 
@@ -374,9 +377,9 @@ class ArbolCausas(models.Model):
     accidente = models.ForeignKey(Accidentes, on_delete=models.CASCADE)
     version = models.SmallIntegerField()
     is_current = models.BooleanField(default=False)
-    arbol_json_5q = models.TextField(null=True)
+    arbol_json_5q = models.TextField(blank=True)
     fecha_registro = models.DateTimeField(auto_now_add=True)
-    arbol_json_dot = models.TextField(null=True)
+    arbol_json_dot = models.TextField(blank=True)
 
     class Meta:
         db_table = 'arbol_causas'
@@ -392,10 +395,10 @@ class Declaraciones(models.Model):
     declaracion_id = models.AutoField(primary_key=True)
     accidente = models.ForeignKey(Accidentes, on_delete=models.CASCADE, related_name='declaraciones')
     tipo_decl = models.CharField(max_length=20, choices=TIPO_DECL_CHOICES, default='testigo')
-    nombre = models.CharField(max_length=255, null=True)
-    rut = models.CharField(max_length=20, null=True)
-    cargo = models.CharField(max_length=255, null=True)
-    texto = models.TextField(null=True)
+    nombre = models.CharField(max_length=255, blank=True)
+    rut = models.CharField(max_length=20, blank=True)
+    cargo = models.CharField(max_length=255, blank=True)
+    texto = models.TextField(blank=True)
 
     class Meta:
         db_table = 'declaraciones'
@@ -404,13 +407,13 @@ class Declaraciones(models.Model):
 class Documentos(models.Model):
     documento_id = models.CharField(primary_key=True, max_length=36)
     accidente = models.ForeignKey('Accidentes', null=True, on_delete=models.CASCADE)
-    documento = models.CharField(max_length=255, null=True)
-    objetivo = models.TextField(null=True)
-    nombre_archivo = models.CharField(max_length=255, null=True)
-    mime_type = models.CharField(max_length=100, null=True)
+    documento = models.CharField(max_length=255, blank=True)
+    objetivo = models.TextField(blank=True)
+    nombre_archivo = models.CharField(max_length=255, blank=True)
+    mime_type = models.CharField(max_length=100, blank=True)
     contenido = models.BinaryField(null=True, blank=True)
     subido_el = models.DateTimeField(auto_now_add=True)
-    url = models.CharField(max_length=2048, null=True, help_text="Enlace externo o URL interna de descarga")
+    url = models.CharField(max_length=2048, blank=True, help_text="Enlace externo o URL interna de descarga")
 
     class Meta:
         db_table = 'documentos'
@@ -431,7 +434,7 @@ class Hechos(models.Model):
     hecho_id = models.AutoField(primary_key=True)
     accidente = models.ForeignKey(Accidentes, on_delete=models.CASCADE)
     secuencia = models.SmallIntegerField(null=True)
-    descripcion = models.TextField(null=True)
+    descripcion = models.TextField(blank=True)
 
     class Meta:
         db_table = 'hechos'
@@ -442,9 +445,9 @@ class Informes(models.Model):
     accidente = models.ForeignKey(Accidentes, on_delete=models.CASCADE)
     version = models.SmallIntegerField()
     is_current = models.BooleanField(default=False)
-    codigo = models.CharField(max_length=50, null=True)
+    codigo = models.CharField(max_length=50, blank=True)
     fecha_informe = models.DateField(null=True)
-    investigador = models.CharField(max_length=255, null=True)
+    investigador = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -462,9 +465,9 @@ class PreguntasGuia(models.Model):
     accidente = models.ForeignKey(Accidentes, on_delete=models.CASCADE)
     uuid = models.CharField(max_length=36)
     categoria = models.CharField(max_length=20, choices=CATEGORIA_CHOICES)
-    pregunta = models.TextField(null=True)
-    objetivo = models.TextField(null=True)
-    respuesta = models.TextField(null=True)
+    pregunta = models.TextField(blank=True)
+    objetivo = models.TextField(blank=True)
+    respuesta = models.TextField(blank=True)
 
     class Meta:
         db_table = 'preguntas_guia'
@@ -474,11 +477,11 @@ class PreguntasGuia(models.Model):
 class Prescripciones(models.Model):
     prescripcion_id = models.AutoField(primary_key=True)
     accidente = models.ForeignKey(Accidentes, on_delete=models.CASCADE)
-    tipo = models.CharField(max_length=100, null=True)
-    prioridad = models.CharField(max_length=50, null=True)
+    tipo = models.CharField(max_length=100, blank=True)
+    prioridad = models.CharField(max_length=50, blank=True)
     plazo = models.DateField(null=True)
-    responsable = models.CharField(max_length=255, null=True)
-    descripcion = models.TextField(null=True)
+    responsable = models.CharField(max_length=255, blank=True)
+    descripcion = models.TextField(blank=True)
 
     class Meta:
         db_table = 'prescripciones'
@@ -497,17 +500,17 @@ class AccidenteJsonData(models.Model):
 class Relato(models.Model):
     relato_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     accidente = models.ForeignKey('Accidentes', on_delete=models.CASCADE, related_name="relato")
-    relato_inicial = models.TextField(blank=True, null=True)
-    pregunta_1 = models.TextField(blank=True, null=True)
-    respuesta_1 = models.TextField(blank=True, null=True)
-    pregunta_2 = models.TextField(blank=True, null=True)
-    respuesta_2 = models.TextField(blank=True, null=True)
-    pregunta_3 = models.TextField(blank=True, null=True)
-    respuesta_3 = models.TextField(blank=True, null=True)
-    relato_final = models.TextField(blank=True, null=True)
-    fraseQR1 = models.TextField(blank=True, null=True)
-    fraseQR2 = models.TextField(blank=True, null=True)
-    fraseQR3 = models.TextField(blank=True, null=True)
+    relato_inicial = models.TextField(blank=True)
+    pregunta_1 = models.TextField(blank=True)
+    respuesta_1 = models.TextField(blank=True)
+    pregunta_2 = models.TextField(blank=True)
+    respuesta_2 = models.TextField(blank=True)
+    pregunta_3 = models.TextField(blank=True)
+    respuesta_3 = models.TextField(blank=True)
+    relato_final = models.TextField(blank=True)
+    fraseQR1 = models.TextField(blank=True)
+    fraseQR2 = models.TextField(blank=True)
+    fraseQR3 = models.TextField(blank=True)
     is_current = models.BooleanField(default=True)
     creado_en = models.DateTimeField(default=timezone.now)
 

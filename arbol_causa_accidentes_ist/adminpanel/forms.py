@@ -11,6 +11,7 @@ from accidentes.access import (
     trabajadores_permitidos,
     SUPER_ROLES,
 )
+from accidentes.constants import ROLE_ADMIN_HOLDING, ROLE_ADMIN_EMPRESA, ROLE_SUPER_ADMIN, ROLE_ADMIN_IST
 
 User = get_user_model()
 
@@ -65,7 +66,7 @@ class AccidenteCrearForm(forms.ModelForm):
         if rol in SUPER_ROLES:
             self.fields["holding"].queryset = qs_hold
             self.fields["holding"].required = True
-        elif rol in {"admin_holding", "admin_empresa"}:
+        elif rol in {ROLE_ADMIN_HOLDING, ROLE_ADMIN_EMPRESA}:
             self.fields["holding"].queryset = qs_hold
             self.fields["holding"].widget = forms.HiddenInput()
             if qs_hold.exists():
@@ -75,7 +76,7 @@ class AccidenteCrearForm(forms.ModelForm):
         # --- Empresa encadenada a holding y rol
         qs_emp = empresas_permitidas(self.user, holding_id=holding_val)
 
-        if rol in SUPER_ROLES or rol == "admin_holding":
+        if rol in SUPER_ROLES or rol == ROLE_ADMIN_HOLDING:
             self.fields["empresa"].required = True
             self.fields["empresa"].widget.attrs.setdefault("class", "form-select")
             if holding_val:
@@ -133,7 +134,7 @@ class AccidenteCrearForm(forms.ModelForm):
             return usuario
 
         # Permite auto-asignación para roles “globales”
-        if usuario.pk == getattr(self.user, "pk", None) and getattr(self.user, "rol", None) in ("admin", "admin_ist", "admin_holding"):
+        if usuario.pk == getattr(self.user, "pk", None) and getattr(self.user, "rol", None) in (ROLE_SUPER_ADMIN, ROLE_ADMIN_IST, ROLE_ADMIN_HOLDING):
             return usuario
 
         raise forms.ValidationError("Usuario fuera de tu alcance para esta empresa.")
@@ -163,7 +164,7 @@ class AccidenteCrearForm(forms.ModelForm):
                 self.add_error("holding", "Debes seleccionar un holding.")
             if not empresa:
                 self.add_error("empresa", "Debes seleccionar una empresa.")
-        elif rol == "admin_holding":
+        elif rol == ROLE_ADMIN_HOLDING:
             if not empresa:
                 self.add_error("empresa", "Debes seleccionar una empresa.")
 
@@ -245,7 +246,7 @@ class TrabajadorCrearForm(forms.ModelForm):
 
         qs_emp = empresas_permitidas(self.user, holding_id=hid)
 
-        if role in SUPER_ROLES or role == "admin_holding":
+        if role in SUPER_ROLES or role == ROLE_ADMIN_HOLDING:
             self.fields["empresa"].queryset = qs_emp
             self.fields["empresa"].required = True
             initial_emp = self.initial.get("empresa")
@@ -274,7 +275,7 @@ class TrabajadorCrearForm(forms.ModelForm):
             if not qs_emp_ok.filter(pk=empresa.pk).exists():
                 self.add_error("empresa", "Empresa fuera de tu alcance.")
         else:
-            if role in SUPER_ROLES or role == "admin_holding":
+            if role in SUPER_ROLES or role == ROLE_ADMIN_HOLDING:
                 self.add_error("empresa", "Debes seleccionar una empresa.")
             else:
                 qs_emp = empresas_permitidas(self.user)

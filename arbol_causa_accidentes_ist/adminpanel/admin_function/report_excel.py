@@ -19,11 +19,12 @@ from django.db.models import Exists, OuterRef, Min
 
 from accidentes.models import Accidentes, Informes
 from accidentes.access import scope_accidentes_q  # si no existe, se maneja con try/except
+from accidentes.constants import ROLE_SUPER_ADMIN, ROLE_ADMIN_IST, ROLE_ADMIN_HOLDING, ROLE_ADMIN_EMPRESA, ROLE_COORDINADOR
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 User = get_user_model()
 # ======================= Permisos =======================
-ALLOWED_ROLES = {"admin", "admin_ist", "admin_holding", "admin_empresa", "coordinador"}
+ALLOWED_ROLES = {ROLE_SUPER_ADMIN, ROLE_ADMIN_IST, ROLE_ADMIN_HOLDING, ROLE_ADMIN_EMPRESA, ROLE_COORDINADOR}
 
 def _user_can_download(user, accidente: Accidentes | None) -> bool:
     if not getattr(user, "is_authenticated", False):
@@ -247,14 +248,14 @@ def _filter_role_limits(user, qs):
     - admin_empresa: limitar por empresa del usuario (si la tiene)
     """
     rol = getattr(user, "rol", None)
-    if rol in {"admin", "admin_ist"}:
+    if rol in {ROLE_SUPER_ADMIN, ROLE_ADMIN_IST}:
         return qs
-    if rol == "admin_holding":
+    if rol == ROLE_ADMIN_HOLDING:
         hid = getattr(user, "holding_id", None)
         if hid:
             qs = qs.filter(empresa__holding_id=hid)
         return qs
-    if rol == "admin_empresa":
+    if rol == ROLE_ADMIN_EMPRESA:
         eid = getattr(user, "empresa_id", None)
         if eid:
             qs = qs.filter(empresa_id=eid)
@@ -278,7 +279,7 @@ def _get_filter_options(user, *, holding_id=None, empresa_id=None):
 
     # ============ HOLDINGS ============
     holdings = []
-    if rol in {"admin", "admin_ist"}:
+    if rol in {ROLE_SUPER_ADMIN, ROLE_ADMIN_IST}:
         from accidentes.models import Holdings
         holdings_ids = (
             base_qs.values_list("empresa__holding_id", flat=True)
@@ -292,10 +293,10 @@ def _get_filter_options(user, *, holding_id=None, empresa_id=None):
         pk__in=base_qs.values_list("empresa_id", flat=True).distinct()
     ).order_by("empresa_sel")
 
-    if rol == "admin_holding":
+    if rol == ROLE_ADMIN_HOLDING:
         rol_hid = getattr(user, "holding_id", None)
         empresas = empresas_all.filter(holding_id=rol_hid)
-    elif rol == "admin_empresa":
+    elif rol == ROLE_ADMIN_EMPRESA:
         rol_eid = getattr(user, "empresa_id", None)
         empresas = empresas_all.filter(pk=rol_eid)
     elif rol in {"admin", "admin_ist"} and hid:
@@ -318,7 +319,7 @@ def _get_filter_options(user, *, holding_id=None, empresa_id=None):
             if rol_eid:
                 users_base = users_base.filter(empresa_id=rol_eid)
         # Para admin_holding, su holding
-        if rol == "admin_holding":
+        if rol == ROLE_ADMIN_HOLDING:
             rol_hid = getattr(user, "holding_id", None)
             if rol_hid:
                 users_base = users_base.filter(empresa__holding_id=rol_hid)
@@ -332,7 +333,7 @@ def _get_filter_options(user, *, holding_id=None, empresa_id=None):
 
     # ============ COORDINADORES ============
     coord_ids = (users_base
-                 .filter(creado_por__rol="coordinador")
+                 .filter(creado_por__rol=ROLE_COORDINADOR)
                  .values_list("creado_por_id", flat=True)
                  .distinct())
     coordinadores = User.objects.filter(pk__in=coord_ids).order_by("first_name", "last_name", "username")
@@ -389,7 +390,7 @@ def _apply_filters(qs, request, user):
 
     # coordinador (usamos creado_por con rol 'coordinador')
     if coordinador_id:
-        qs = qs.filter(creado_por_id=coordinador_id, creado_por__rol="coordinador")
+        qs = qs.filter(creado_por_id=coordinador_id, creado_por__rol=ROLE_COORDINADOR)
 
     # ----------------------------------------------
 

@@ -2,7 +2,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.exceptions import ValidationError
-from accidentes.constants import ROL_CHOICES, TEAM_CHOICES
+from accidentes.constants import ROL_CHOICES, TEAM_CHOICES, ROLE_INVESTIGADOR
 import re
 
 def normaliza_rut(rut: str) -> str:
@@ -36,7 +36,7 @@ class User(AbstractUser):
     email = models.EmailField("email address", unique=True, blank=True)
 
     team = models.CharField(max_length=10, choices=TEAM_CHOICES, default="adherente")
-    rol  = models.CharField(max_length=35, choices=ROL_CHOICES, default="investigador")
+    rol  = models.CharField(max_length=35, choices=ROL_CHOICES, default=ROLE_INVESTIGADOR)
 
     empresa = models.ForeignKey(
         "accidentes.Empresas",

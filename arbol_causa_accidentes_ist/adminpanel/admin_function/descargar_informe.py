@@ -13,8 +13,9 @@ from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 
 from accidentes.models import Accidentes, Informes, Documentos
+from accidentes.constants import ROLE_SUPER_ADMIN, ROLE_ADMIN_IST, ROLE_ADMIN_HOLDING, ROLE_ADMIN_EMPRESA
 
-ALLOWED_ROLES = {"admin", "admin_ist", "admin_holding", "admin_empresa"}
+ALLOWED_ROLES = {ROLE_SUPER_ADMIN, ROLE_ADMIN_IST, ROLE_ADMIN_HOLDING, ROLE_ADMIN_EMPRESA}
 
 
 def _user_can_download(user, accidente: Accidentes | None) -> bool:

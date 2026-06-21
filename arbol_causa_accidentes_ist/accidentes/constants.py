@@ -26,5 +26,11 @@ TEAM_CHOICES = [
     ("adherente", "Adherente"),
 ]
 
+ASSIGNABLE_ROLES = {ROLE_INVESTIGADOR, ROLE_INVESTIGADOR_IST, ROLE_ADMIN_EMPRESA, ROLE_ADMIN_HOLDING, ROLE_SUPER_ADMIN, ROLE_ADMIN_IST}
+
 ERROR_CASO_NO_DISPONIBLE = "Caso no disponible."
 ERROR_ACCESO_DENEGADO = "Acceso denegado: debes estar asignado a este accidente."
+
+# Source constants for decorators
+SOURCE_SESSION = "session"
+SOURCE_KWARG = "kwarg"
