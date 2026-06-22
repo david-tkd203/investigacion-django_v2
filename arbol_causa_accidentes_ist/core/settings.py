@@ -253,6 +253,6 @@ IST_EMAIL_SOURCE_IP   = os.getenv("IST_EMAIL_SOURCE_IP", "")
 # Email de Django (coherencia global)
 DEFAULT_FROM_EMAIL    = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@ist.cl")
 
-# Backend personalizado para envío de emails
-EMAIL_BACKEND = "core.email_backends.ist_via_token.EmailBackend"
+# Demo: emails se muestran en consola en vez de enviarse
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 

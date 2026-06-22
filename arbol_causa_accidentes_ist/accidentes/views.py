@@ -317,11 +317,14 @@ class DatosAccidenteView(LoginRequiredMixin, AccidenteScopedByCodigoMixin, View)
 
         if form.has_changed():
             obj = form.save(commit=False)
-            # trazabilidad opcional si tienes el campo:
             if hasattr(obj, "actualizado_por"):
                 obj.actualizado_por = request.user
-            obj.save()
-            messages.success(request, "Datos del accidente guardados.")
+            try:
+                obj.save()
+                messages.success(request, "Datos del accidente guardados.")
+            except Exception as e:
+                logger.error("Error guardando accidente %s: %s", codigo, e)
+                messages.error(request, f"Error al guardar: {e}")
         else:
             messages.info(request, "No se realizaron cambios.")
 

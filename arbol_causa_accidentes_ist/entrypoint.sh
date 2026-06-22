@@ -4,10 +4,7 @@ set -e
 # Espera inicial (configurable vía DB_WAIT_SECONDS); por defecto 30s
 sleep "${DB_WAIT_SECONDS:-100}"
 
-echo "Generando migraciones"
-python manage.py makemigrations --noinput
-
-echo "Haciendo migraciones..."
+echo "Ejecutando migraciones..."
 python manage.py migrate --noinput
 
 echo "Estaticos..."
