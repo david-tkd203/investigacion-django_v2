@@ -320,10 +320,11 @@ class Accidentes(models.Model):
         if self.empresa and self.holding and self.empresa.holding_id and self.holding_id != self.empresa.holding_id:
             errors["holding"] = "El holding del accidente no coincide con el holding de la empresa."
 
-        # (3) Trabajador requerido y coherente con empresa
+        # (3) Trabajador requerido y coherente con empresa (solo en creación)
         if not self.trabajador:
-            errors["trabajador"] = "El trabajador es obligatorio."
-        else:
+            if self.pk is None:
+                errors["trabajador"] = "El trabajador es obligatorio."
+        elif self.pk is None:
             if self.empresa and self.trabajador.empresa_id and self.trabajador.empresa_id != self.empresa_id:
                 errors["trabajador"] = "El trabajador no pertenece a la empresa seleccionada."
 
